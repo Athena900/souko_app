@@ -1,0 +1,20 @@
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+.env*
+!.env.example
+
+# 業務資料・受領ファイルはGitへ登録しない
+/docs/
+*.xlsx
+*.xls
+
+# OS・ローカル生成物
+.DS_Store
+*.tsbuildinfo
+/tmp/
+/supabase/.temp/
+/supabase/.branches/
