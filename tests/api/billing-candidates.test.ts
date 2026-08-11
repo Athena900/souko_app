@@ -63,6 +63,14 @@ describe("billing candidate review APIs", () => {
       body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", candidateId: candidate.id, status: "rejected", note: "再確認" }),
     }));
     expect(reReview.status).toBe(422);
+
+    const recalculated = await createCandidate(new Request("http://localhost/api/billing-candidates", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", fieldWorkRecordId: savedBody.id, recalculate: true }),
+    }));
+    expect(recalculated.status).toBe(201);
+    await expect(recalculated.json()).resolves.toMatchObject({ status: "ready", persisted: true, id: expect.not.stringMatching(`^${candidate.id}$`) });
   });
 
   it("requires a note before approving a candidate with a warning", async () => {
