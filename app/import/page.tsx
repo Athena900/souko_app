@@ -8,7 +8,7 @@ export default function ImportPage() {
     <div className="shell">
       <header className="topbar">
         <Link className="brand" href="/">CSロジネット 倉庫業務</Link>
-        <nav className="nav" aria-label="事務メニュー"><Link href="/field">現場入力</Link><Link href="/">トップへ戻る</Link></nav>
+        <nav className="nav" aria-label="事務メニュー"><Link href="/field">現場入力</Link><Link href="/billing">請求候補</Link><Link href="/">トップへ戻る</Link></nav>
       </header>
       <main className="main">
         <span className="eyebrow">Module 1 / Excel</span>

@@ -8,6 +8,7 @@ export default function HomePage() {
         <nav className="nav" aria-label="メインメニュー">
           <Link href="/import">Excel取込</Link>
           <Link href="/field">現場入力</Link>
+          <Link href="/billing">請求候補</Link>
           <Link href="/api/health">稼働確認</Link>
         </nav>
       </header>
