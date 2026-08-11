@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const id = z.string().trim().min(1).max(120);
 const positiveInteger = z.number().int().min(0).max(1_000_000);
+const yenAmount = z.number().int().min(0).max(1_000_000_000_000_000);
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付はYYYY-MM-DDで入力してください");
 
 export const materialLineSchema = z
@@ -109,6 +110,7 @@ export const billingCandidateRequestSchema = z
     clientId: id,
     siteId: id,
     fieldWorkRecordId: id,
+    recalculate: z.boolean().optional(),
   })
   .strict();
 
@@ -119,6 +121,49 @@ export const billingCandidateReviewRequestSchema = z
     candidateId: id,
     status: z.enum(["approved", "rejected"]),
     note: z.string().trim().max(2_000).optional(),
+  })
+  .strict();
+
+const billingCandidateLineSchema = z
+  .object({
+    sourceType: z.enum(["field_work", "shipment"]),
+    sourceId: id,
+    workCode: id,
+    description: id,
+    quantity: positiveInteger,
+    unitPriceYen: yenAmount,
+    subtotalYen: yenAmount,
+    taxYen: yenAmount,
+    totalYen: yenAmount,
+    priceRuleId: id,
+    priceRuleVersion: z.number().int().positive(),
+    calculationRunId: id,
+  })
+  .strict();
+
+export const billingCandidateResponseSchema = z
+  .object({
+    id,
+    fieldWorkRecordId: id,
+    clientId: id,
+    siteId: id,
+    shipmentNo: id,
+    workDate: date,
+    calculation: z
+      .object({
+        calculationRunId: id,
+        lines: z.array(billingCandidateLineSchema).max(500),
+        subtotalYen: yenAmount,
+        taxYen: yenAmount,
+        totalYen: yenAmount,
+        warnings: z.array(z.string().max(500)).max(100),
+      })
+      .strict(),
+    status: z.enum(["ready", "review_required", "approved", "rejected"]),
+    reviewedAt: z.string().max(100).optional(),
+    reviewNote: z.string().max(2_000).optional(),
+    demo: z.boolean(),
+    persisted: z.boolean(),
   })
   .strict();
 

@@ -1,5 +1,8 @@
 import { calculateFieldWorkBilling } from "@/src/domain/pricing";
 import type { BillingCalculation, BillingCandidateReviewStatus, FieldWorkInput, PriceRule } from "@/src/domain/types";
+import { billingCandidateResponseSchema } from "@/src/domain/validation";
+import { createSupabaseServerClient } from "@/src/lib/supabase/server";
+import { PersistenceError } from "@/src/server/repositories/field-work-repository";
 
 export interface BillingCandidateReview {
   id: string;
@@ -18,6 +21,8 @@ export interface BillingCandidateReview {
 
 export class BillingCandidateNotFoundError extends Error {}
 export class BillingCandidateReviewError extends Error {}
+export class BillingCandidateRuleError extends Error {}
+export class BillingCandidatePermissionError extends Error {}
 
 const demoCandidates = new Map<string, BillingCandidateReview>();
 const demoCandidateByRecord = new Map<string, string>();
@@ -26,11 +31,14 @@ export function calculateDemoBillingCandidate(
   fieldWorkRecordId: string,
   record: FieldWorkInput,
   rules: PriceRule[],
+  forceRecalculate = false,
 ): BillingCandidateReview {
   const existingId = demoCandidateByRecord.get(fieldWorkRecordId);
   if (existingId) {
     const existing = demoCandidates.get(existingId);
-    if (existing && existing.status !== "rejected") return structuredClone(existing);
+    if (existing && (!forceRecalculate || (existing.status !== "approved" && existing.status !== "rejected"))) {
+      return structuredClone(existing);
+    }
   }
 
   const id = `demo-${crypto.randomUUID()}`;
@@ -50,27 +58,6 @@ export function calculateDemoBillingCandidate(
   demoCandidates.set(id, candidate);
   demoCandidateByRecord.set(fieldWorkRecordId, id);
   return structuredClone(candidate);
-}
-
-export function calculateTransientBillingCandidate(
-  fieldWorkRecordId: string,
-  record: FieldWorkInput,
-  rules: PriceRule[],
-): BillingCandidateReview {
-  const id = crypto.randomUUID();
-  const calculation = calculateFieldWorkBilling(record, rules, fieldWorkRecordId, id);
-  return {
-    id,
-    fieldWorkRecordId,
-    clientId: record.clientId,
-    siteId: record.siteId,
-    shipmentNo: record.shipmentNo,
-    workDate: record.workDate,
-    calculation,
-    status: calculation.warnings.length > 0 ? "review_required" : "ready",
-    demo: false,
-    persisted: false,
-  };
 }
 
 export function reviewDemoBillingCandidate(
@@ -112,4 +99,67 @@ export function getDemoBillingCandidate(candidateId: string, clientId: string, s
 export function resetDemoBillingCandidates(): void {
   demoCandidates.clear();
   demoCandidateByRecord.clear();
+}
+
+function mapRpcError(error: { code?: string; message?: string }): Error {
+  const message = error.message ?? "請求候補のDB処理に失敗しました";
+  if (error.code === "P0002") return new BillingCandidateNotFoundError(message);
+  if (error.code === "P0003") return new BillingCandidateRuleError(message);
+  if (error.code === "P0004") return new BillingCandidateReviewError(message);
+  if (error.code === "42501") return new BillingCandidatePermissionError(message);
+  return new PersistenceError("請求候補のDB処理に失敗しました");
+}
+
+function parsePersistedCandidate(data: unknown): BillingCandidateReview {
+  const parsed = billingCandidateResponseSchema.safeParse(data);
+  if (!parsed.success) throw new PersistenceError("請求候補のDB応答を確認できませんでした");
+  return parsed.data;
+}
+
+export async function persistSupabaseBillingCandidate(
+  clientId: string,
+  siteId: string,
+  fieldWorkRecordId: string,
+  forceRecalculate = false,
+): Promise<BillingCandidateReview> {
+  let supabase;
+  try {
+    supabase = await createSupabaseServerClient();
+  } catch {
+    throw new PersistenceError("Supabaseに接続できませんでした");
+  }
+
+  const { data, error } = await supabase.rpc("persist_billing_candidate", {
+    p_client_id: clientId,
+    p_site_id: siteId,
+    p_field_work_record_id: fieldWorkRecordId,
+    p_force_recalculate: forceRecalculate,
+  });
+  if (error) throw mapRpcError(error);
+  return parsePersistedCandidate(data);
+}
+
+export async function reviewSupabaseBillingCandidate(
+  clientId: string,
+  siteId: string,
+  candidateId: string,
+  status: "approved" | "rejected",
+  note?: string,
+): Promise<BillingCandidateReview> {
+  let supabase;
+  try {
+    supabase = await createSupabaseServerClient();
+  } catch {
+    throw new PersistenceError("Supabaseに接続できませんでした");
+  }
+
+  const { data, error } = await supabase.rpc("review_billing_candidate", {
+    p_client_id: clientId,
+    p_site_id: siteId,
+    p_candidate_id: candidateId,
+    p_status: status,
+    p_note: note ?? null,
+  });
+  if (error) throw mapRpcError(error);
+  return parsePersistedCandidate(data);
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { calculateTransientBillingCandidate, calculateDemoBillingCandidate } from "@/src/server/repositories/billing-candidate-repository";
+import { calculateDemoBillingCandidate, BillingCandidateNotFoundError, BillingCandidatePermissionError, BillingCandidateRuleError, persistSupabaseBillingCandidate } from "@/src/server/repositories/billing-candidate-repository";
 import { billingCandidateRequestSchema } from "@/src/domain/validation";
 import { demoPriceRules } from "@/src/domain/demo-fixtures";
 import { hasSupabasePublicEnv, isDemoMode } from "@/src/lib/env";
@@ -19,7 +19,6 @@ import {
   getSupabaseBillingSourceFieldWorkRecord,
   PersistenceError,
 } from "@/src/server/repositories/field-work-repository";
-import { loadApprovedPriceRules } from "@/src/server/repositories/price-rule-repository";
 
 export const runtime = "nodejs";
 
@@ -54,23 +53,21 @@ export async function POST(request: Request) {
       : await getSupabaseBillingSourceFieldWorkRecord(fieldWorkRecordId, clientId, siteId);
     if (!record) return NextResponse.json({ error: "対象の現場記録が見つかりません" }, { status: 404 });
 
-    const rules = isDemoMode()
-      ? demoPriceRules
-      : await loadApprovedPriceRules(clientId, siteId, record.input.workDate);
-    if (rules.length === 0) return NextResponse.json({ error: "承認済み単価がありません" }, { status: 422 });
+    if (!isDemoMode()) {
+      const candidate = await persistSupabaseBillingCandidate(clientId, siteId, record.id, parsed.data.recalculate ?? false);
+      return NextResponse.json(candidate, { status: 200 });
+    }
 
-    const candidate = isDemoMode()
-      ? calculateDemoBillingCandidate(record.id, record.input, rules)
-      : calculateTransientBillingCandidate(record.id, record.input, rules);
+    const candidate = calculateDemoBillingCandidate(record.id, record.input, demoPriceRules, parsed.data.recalculate ?? false);
     return NextResponse.json(candidate, { status: 201 });
   } catch (error) {
     if (error instanceof RouteUnauthorizedError) return NextResponse.json({ error: error.message }, { status: 401 });
     if (error instanceof RouteForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 });
+    if (error instanceof BillingCandidateNotFoundError) return NextResponse.json({ error: error.message }, { status: 404 });
+    if (error instanceof BillingCandidatePermissionError) return NextResponse.json({ error: error.message }, { status: 403 });
+    if (error instanceof BillingCandidateRuleError) return NextResponse.json({ error: error.message }, { status: 422 });
     if (error instanceof RouteConfigurationError || error instanceof PersistenceError) {
       return NextResponse.json({ error: error.message }, { status: 503 });
-    }
-    if (error instanceof Error && error.message === "承認済み単価がありません") {
-      return NextResponse.json({ error: error.message }, { status: 422 });
     }
     return NextResponse.json({ error: "請求候補を計算できませんでした" }, { status: 503 });
   }
