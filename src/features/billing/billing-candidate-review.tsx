@@ -112,7 +112,12 @@ export function BillingCandidateReview({ scope }: { scope: BillingScope | null }
       const response = await fetch("/api/billing-candidates", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ clientId: activeScope.clientId, siteId: activeScope.siteId, fieldWorkRecordId: selectedRecordId }),
+        body: JSON.stringify({
+          clientId: activeScope.clientId,
+          siteId: activeScope.siteId,
+          fieldWorkRecordId: selectedRecordId,
+          recalculate: candidate?.status === "approved" || candidate?.status === "rejected",
+        }),
       });
       const body = (await response.json()) as BillingCandidate & { error?: string };
       if (!response.ok) throw new Error(body.error ?? "請求候補を計算できませんでした");
@@ -148,7 +153,7 @@ export function BillingCandidateReview({ scope }: { scope: BillingScope | null }
   }
 
   const selectedRecord = visibleRecords.find((record) => record.id === selectedRecordId);
-  const canReview = Boolean(candidate?.demo && candidate.persisted && candidate.status !== "approved" && candidate.status !== "rejected");
+  const canReview = Boolean(candidate?.persisted && candidate.status !== "approved" && candidate.status !== "rejected");
 
   return (
     <div className="two-column">
@@ -163,7 +168,7 @@ export function BillingCandidateReview({ scope }: { scope: BillingScope | null }
           </select>
         </div>
         {loading ? <p className="muted">現場記録を読み込み中…</p> : loadError ? <p className="notice">{loadError}</p> : visibleRecords.length === 0 ? <p className="notice">現場記録がありません。先に現場入力を保存してください。</p> : selectedRecord ? <p className="muted">選択中：{selectedRecord.shipmentNo} / {selectedRecord.workDate}</p> : null}
-        <button className="button" type="button" onClick={calculateCandidate} disabled={busy || loading || !selectedRecordId}>請求候補を計算</button>
+        <button className="button" type="button" onClick={calculateCandidate} disabled={busy || loading || !selectedRecordId}>{candidate?.status === "approved" || candidate?.status === "rejected" ? "請求候補を再計算" : "請求候補を計算"}</button>
         {message && <div className={`status ${message.kind === "error" ? "error" : message.kind === "warning" ? "warning" : ""}`} role="status">{message.text}</div>}
       </section>
 
@@ -174,7 +179,7 @@ export function BillingCandidateReview({ scope }: { scope: BillingScope | null }
           <p className="muted">小計 {yen(candidate.calculation.subtotalYen)} / 税 {yen(candidate.calculation.taxYen)} / 出荷番号 {candidate.shipmentNo}</p>
           {candidate.calculation.warnings.length > 0 && <div className="status warning"><strong>確認が必要</strong>{candidate.calculation.warnings.map((warning) => <div key={warning}>{warning}</div>)}</div>}
           <div className="table-scroll"><table className="line-table"><thead><tr><th>明細</th><th>数量</th><th>単価</th><th>金額</th></tr></thead><tbody>{candidate.calculation.lines.map((line, index) => <tr key={`${index}-${line.workCode}-${line.priceRuleId}`}><td>{line.description}</td><td>{line.quantity}</td><td>{yen(line.unitPriceYen)}</td><td>{yen(line.totalYen)}</td></tr>)}</tbody></table></div>
-          {candidate.persisted ? <><div className="field" style={{ marginTop: 16 }}><label htmlFor="reviewNote">確認メモ（警告がある場合は必須）</label><textarea id="reviewNote" value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="例：数量を作業表と確認済み" /></div><div className="actions"><button className="button" type="button" onClick={() => reviewCandidate("approved")} disabled={busy || !canReview}>確認済みにする</button><button className="button secondary" type="button" onClick={() => reviewCandidate("rejected")} disabled={busy || !canReview}>差し戻す</button></div></> : <p className="notice">本番では計算結果の表示までです。確認結果の保存はDB承認機能を接続後に有効化します。</p>}
+          {candidate.persisted ? <><div className="field" style={{ marginTop: 16 }}><label htmlFor="reviewNote">確認メモ（警告がある場合は必須）</label><textarea id="reviewNote" value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="例：数量を作業表と確認済み" /></div><div className="actions"><button className="button" type="button" onClick={() => reviewCandidate("approved")} disabled={busy || !canReview}>確認済みにする</button><button className="button secondary" type="button" onClick={() => reviewCandidate("rejected")} disabled={busy || !canReview}>差し戻す</button></div></> : <p className="notice">この候補は保存されていないため、確認結果を保存できません。</p>}
         </>}
       </section>
     </div>
