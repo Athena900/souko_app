@@ -225,7 +225,7 @@ export function FieldRecordForm({ scope }: { scope: FieldScope | null }) {
           <div className="result-total">{yen(preview.totalYen)}</div>
           <p className="muted">小計 {yen(preview.subtotalYen)} / 税 {yen(preview.taxYen)}</p>
           {preview.warnings.length > 0 && <div className="status warning">{preview.warnings.map((warning) => <div key={warning}>{warning}</div>)}</div>}
-          <table className="line-table"><thead><tr><th>明細</th><th>数量</th><th>金額</th></tr></thead><tbody>{preview.lines.map((line) => <tr key={`${line.workCode}-${line.priceRuleId}`}><td>{line.description}</td><td>{line.quantity}</td><td>{yen(line.totalYen)}</td></tr>)}</tbody></table>
+          <table className="line-table"><thead><tr><th>明細</th><th>数量</th><th>金額</th></tr></thead><tbody>{preview.lines.map((line, index) => <tr key={`${index}-${line.workCode}-${line.priceRuleId}`}><td>{line.description}</td><td>{line.quantity}</td><td>{yen(line.totalYen)}</td></tr>)}</tbody></table>
         </>}
       </section>
     </div>
