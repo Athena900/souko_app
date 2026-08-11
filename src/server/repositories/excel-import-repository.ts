@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 import type { ShipmentRow } from "@/src/domain/types";
+import type { RegisteredShipment } from "@/src/server/repositories/shipment-repository";
 
 export interface ExcelImportRegistrationInput {
   sourceFileVersionId: string;
@@ -117,6 +118,11 @@ export function createSupabaseExcelImportRepository(): ExcelImportRepository {
 }
 
 const demoRegistrations = new Map<string, StoredExcelImport>();
+const demoShipments = new Map<string, RegisteredShipment>();
+
+function demoShipmentKey(clientId: string, siteId: string, shipmentNo: string): string {
+  return `${clientId}:${siteId}:${shipmentNo}`;
+}
 
 export function createDemoExcelImportRepository(): ExcelImportRepository {
   return {
@@ -124,6 +130,9 @@ export function createDemoExcelImportRepository(): ExcelImportRepository {
       const key = `${input.clientId}:${input.siteId}:${input.sha256}`;
       const existing = demoRegistrations.get(key);
       if (existing) throw new ExcelImportDuplicateError("同じExcelはすでに登録されています");
+      if (input.rows.some((row) => demoShipments.has(demoShipmentKey(row.clientId, row.siteId, row.shipmentNo)))) {
+        throw new ExcelImportDuplicateError("同じ出荷番号がすでに登録されています");
+      }
       const result: StoredExcelImport = {
         sourceFileVersionId: input.sourceFileVersionId,
         importRunId: `demo-${crypto.randomUUID()}`,
@@ -132,11 +141,45 @@ export function createDemoExcelImportRepository(): ExcelImportRepository {
         demo: true,
       };
       demoRegistrations.set(key, result);
+      for (const row of input.rows) {
+        demoShipments.set(demoShipmentKey(row.clientId, row.siteId, row.shipmentNo), {
+          id: `demo-${crypto.randomUUID()}`,
+          shipmentNo: row.shipmentNo,
+          workDate: row.workDate,
+          packCount: row.packCount,
+          status: "ready",
+        });
+      }
       return result;
     },
   };
 }
 
+export function listDemoExcelShipments({
+  clientId,
+  siteId,
+  search,
+  workDate,
+  limit,
+}: {
+  clientId: string;
+  siteId: string;
+  search?: string;
+  workDate?: string;
+  limit: number;
+}): RegisteredShipment[] {
+  const normalizedSearch = search?.trim().toLocaleLowerCase("ja-JP");
+  return [...demoShipments.entries()]
+    .filter(([key]) => key.startsWith(`${clientId}:${siteId}:`))
+    .map(([, shipment]) => shipment)
+    .filter((shipment) => !workDate || shipment.workDate === workDate)
+    .filter((shipment) => !normalizedSearch || shipment.shipmentNo.toLocaleLowerCase("ja-JP").includes(normalizedSearch))
+    .sort((left, right) => right.workDate.localeCompare(left.workDate) || left.shipmentNo.localeCompare(right.shipmentNo))
+    .slice(0, limit)
+    .map((shipment) => ({ ...shipment }));
+}
+
 export function resetDemoExcelImportRegistrations(): void {
   demoRegistrations.clear();
+  demoShipments.clear();
 }

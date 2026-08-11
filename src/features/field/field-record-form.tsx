@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { BillingCalculation, FieldWorkInput } from "@/src/domain/types";
 import { fieldWorkInputSchema } from "@/src/domain/validation";
 
@@ -12,6 +12,14 @@ function localDate(): string {
 export interface FieldScope {
   clientId: string;
   siteId: string;
+}
+
+interface ShipmentOption {
+  id: string;
+  shipmentNo: string;
+  workDate: string;
+  packCount: number;
+  status: string;
 }
 
 function makeInitialRecord(scope: FieldScope | null): FieldWorkInput {
@@ -34,16 +42,59 @@ function yen(value: number): string {
 
 export function FieldRecordForm({ scope }: { scope: FieldScope | null }) {
   const [record, setRecord] = useState<FieldWorkInput>(() => makeInitialRecord(scope));
+  const [shipments, setShipments] = useState<ShipmentOption[]>([]);
+  const [shipmentLoadState, setShipmentLoadState] = useState<{ scopeKey: string; error: string | null }>({ scopeKey: "", error: null });
   const [preview, setPreview] = useState<BillingCalculation | null>(null);
   const [message, setMessage] = useState<{ kind: "success" | "error" | "warning"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const canPreview = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const clientId = scope?.clientId;
+  const siteId = scope?.siteId;
+  const scopeKey = clientId && siteId ? JSON.stringify([clientId, siteId]) : "";
+  const shipmentsLoading = Boolean(scopeKey && shipmentLoadState.scopeKey !== scopeKey);
+  const shipmentsError = shipmentLoadState.scopeKey === scopeKey ? shipmentLoadState.error : null;
+  const visibleShipments = shipmentLoadState.scopeKey === scopeKey ? shipments : [];
 
   const firstBox = record.boxDetails[0];
   const totalMaterialQuantity = useMemo(
     () => record.materialLines.reduce((sum, line) => sum + line.quantity, 0),
     [record.materialLines],
   );
+
+  useEffect(() => {
+    if (!clientId || !siteId) return;
+
+    const controller = new AbortController();
+    let active = true;
+    const requestScopeKey = scopeKey;
+    const query = new URLSearchParams({ clientId, siteId, limit: "100" });
+    fetch(`/api/shipments?${query.toString()}`, { signal: controller.signal })
+      .then(async (response) => {
+        const body = (await response.json()) as { shipments?: ShipmentOption[]; error?: string };
+        if (!response.ok) throw new Error(body.error ?? "登録済み出荷を読み込めませんでした");
+        return body.shipments ?? [];
+      })
+      .then((nextShipments) => {
+        if (active) {
+          setShipments(nextShipments);
+          setShipmentLoadState({ scopeKey: requestScopeKey, error: null });
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        if (!active) return;
+        setShipments([]);
+        setShipmentLoadState({
+          scopeKey: requestScopeKey,
+          error: error instanceof Error ? error.message : "登録済み出荷を読み込めませんでした",
+        });
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [clientId, siteId, scopeKey]);
 
   function updateRecord<K extends keyof FieldWorkInput>(key: K, value: FieldWorkInput[K]) {
     setRecord((current) => ({ ...current, [key]: value }));
@@ -56,6 +107,21 @@ export function FieldRecordForm({ scope }: { scope: FieldScope | null }) {
 
   function updateAdditionalWorkQuantity(value: number) {
     updateRecord("additionalWorkLines", [{ ...record.additionalWorkLines[0], quantity: Math.max(0, value) }]);
+  }
+
+  function selectRegisteredShipment(shipmentNo: string) {
+    const shipment = visibleShipments.find((item) => item.shipmentNo === shipmentNo);
+    if (!shipment) {
+      updateRecord("shipmentNo", "");
+      return;
+    }
+    setRecord((current) => ({
+      ...current,
+      shipmentNo: shipment.shipmentNo,
+      workDate: shipment.workDate,
+      packCount: shipment.packCount,
+    }));
+    setMessage(null);
   }
 
   function updateFirstBox(patch: Partial<NonNullable<typeof firstBox>>) {
@@ -126,6 +192,7 @@ export function FieldRecordForm({ scope }: { scope: FieldScope | null }) {
       <section className="panel" aria-labelledby="field-form-title">
         <h2 id="field-form-title">作業内容</h2>
         <div className="form-grid">
+          <div className="field full"><label htmlFor="registeredShipment">登録済みの出荷から選ぶ</label><select id="registeredShipment" value={visibleShipments.some((shipment) => shipment.shipmentNo === record.shipmentNo) ? record.shipmentNo : ""} onChange={(event) => selectRegisteredShipment(event.target.value)} disabled={shipmentsLoading}><option value="">出荷番号を手入力する</option>{visibleShipments.map((shipment) => <option key={shipment.id} value={shipment.shipmentNo}>{shipment.shipmentNo}（{shipment.workDate}・箱{shipment.packCount}）</option>)}</select>{shipmentsLoading ? <p className="muted" style={{ margin: 0 }}>登録済み出荷を読み込み中…</p> : shipmentsError ? <p className="notice" style={{ margin: 0 }}>登録済み出荷を読み込めませんでした。出荷番号を手入力してください。</p> : visibleShipments.length === 0 ? <p className="muted" style={{ margin: 0 }}>登録済み出荷はありません。出荷番号を手入力できます。</p> : <p className="muted" style={{ margin: 0 }}>選択すると作業日と登録済み箱数が反映されます。</p>}</div>
           <div className="field"><label htmlFor="shipmentNo">出荷番号</label><input id="shipmentNo" value={record.shipmentNo} onChange={(event) => updateRecord("shipmentNo", event.target.value)} placeholder="例：SHP-20260806-001" /></div>
           <div className="field"><label htmlFor="workDate">作業日</label><input id="workDate" type="date" value={record.workDate} onChange={(event) => updateRecord("workDate", event.target.value)} /></div>
           <div className="field"><label htmlFor="packCount">箱数</label><input id="packCount" type="number" min="0" inputMode="numeric" value={record.packCount} onChange={(event) => updateRecord("packCount", Number(event.target.value))} /></div>
