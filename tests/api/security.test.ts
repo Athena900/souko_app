@@ -3,6 +3,7 @@ import { POST as billingPreview } from "@/app/api/billing-preview/route";
 import { POST as fieldRecords } from "@/app/api/field-records/route";
 import { POST as importPreview } from "@/app/api/import-preview/route";
 import { GET as shipments } from "@/app/api/shipments/route";
+import { POST as billingCandidates } from "@/app/api/billing-candidates/route";
 
 const record = {
   clientId: "client-a",
@@ -84,6 +85,17 @@ describe("API security boundaries", () => {
 
   it("does not list shipments without production Supabase configuration", async () => {
     const response = await shipments(new Request("http://localhost/api/shipments?clientId=client-a&siteId=site-1"));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Supabaseの設定が必要です" });
+  });
+
+  it("does not calculate billing candidates without production Supabase configuration", async () => {
+    const response = await billingCandidates(new Request("http://localhost/api/billing-candidates", {
+      method: "POST",
+      headers: sameOriginHeaders(),
+      body: JSON.stringify({ clientId: "client-a", siteId: "site-1", fieldWorkRecordId: "record-1" }),
+    }));
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "Supabaseの設定が必要です" });

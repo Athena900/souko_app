@@ -1,0 +1,111 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { GET as fieldRecords, POST as createFieldRecord } from "@/app/api/field-records/route";
+import { POST as createCandidate } from "@/app/api/billing-candidates/route";
+import { POST as reviewCandidate } from "@/app/api/billing-candidates/review/route";
+import { demoFieldWorkInput } from "@/src/domain/demo-fixtures";
+import { resetDemoBillingCandidates } from "@/src/server/repositories/billing-candidate-repository";
+import { resetDemoFieldWorkRecords } from "@/src/server/repositories/field-work-repository";
+
+describe("billing candidate review APIs", () => {
+  const previousDemoMode = process.env.DEMO_MODE;
+
+  beforeAll(() => { process.env.DEMO_MODE = "true"; });
+  beforeEach(() => {
+    resetDemoFieldWorkRecords();
+    resetDemoBillingCandidates();
+  });
+  afterAll(() => {
+    if (previousDemoMode === undefined) delete process.env.DEMO_MODE;
+    else process.env.DEMO_MODE = previousDemoMode;
+  });
+
+  it("lists a saved field record, calculates a candidate, and saves an approval", async () => {
+    const saved = await createFieldRecord(new Request("http://localhost/api/field-records", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...demoFieldWorkInput, idempotencyKey: "billing-candidate-test" }),
+    }));
+    expect(saved.status).toBe(201);
+    const savedBody = await saved.json() as { id: string };
+
+    const list = await fieldRecords(new Request("http://localhost/api/field-records?clientId=demo-client&siteId=demo-site"));
+    expect(list.status).toBe(200);
+    await expect(list.json()).resolves.toMatchObject({ records: [{ id: savedBody.id, shipmentNo: "DEMO-001", workDate: "2026-08-06", packCount: 2 }] });
+
+    const response = await createCandidate(new Request("http://localhost/api/billing-candidates", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", fieldWorkRecordId: savedBody.id }),
+    }));
+    expect(response.status).toBe(201);
+    const candidate = await response.json();
+    expect(candidate).toMatchObject({ status: "ready", persisted: true, calculation: { totalYen: 1_166, lines: expect.any(Array) } });
+    expect(candidate.calculation.lines).toHaveLength(4);
+
+    const rejectedWithoutNote = await reviewCandidate(new Request("http://localhost/api/billing-candidates/review", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", candidateId: candidate.id, status: "rejected" }),
+    }));
+    expect(rejectedWithoutNote.status).toBe(422);
+
+    const approval = await reviewCandidate(new Request("http://localhost/api/billing-candidates/review", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", candidateId: candidate.id, status: "approved", note: "内容を確認しました" }),
+    }));
+    expect(approval.status).toBe(200);
+    await expect(approval.json()).resolves.toMatchObject({ id: candidate.id, status: "approved", reviewNote: "内容を確認しました" });
+
+    const reReview = await reviewCandidate(new Request("http://localhost/api/billing-candidates/review", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", candidateId: candidate.id, status: "rejected", note: "再確認" }),
+    }));
+    expect(reReview.status).toBe(422);
+  });
+
+  it("requires a note before approving a candidate with a warning", async () => {
+    const saved = await createFieldRecord(new Request("http://localhost/api/field-records", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...demoFieldWorkInput,
+        shipmentNo: "DEMO-WARNING",
+        materialLines: [{ code: "unknown_material", name: "不明資材", quantity: 1 }],
+        idempotencyKey: "billing-warning-test",
+      }),
+    }));
+    const savedBody = await saved.json() as { id: string };
+    const response = await createCandidate(new Request("http://localhost/api/billing-candidates", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", fieldWorkRecordId: savedBody.id }),
+    }));
+    const candidate = await response.json();
+    expect(candidate.status).toBe("review_required");
+
+    const withoutNote = await reviewCandidate(new Request("http://localhost/api/billing-candidates/review", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", candidateId: candidate.id, status: "approved" }),
+    }));
+    expect(withoutNote.status).toBe(422);
+
+    const withNote = await reviewCandidate(new Request("http://localhost/api/billing-candidates/review", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "demo-client", siteId: "demo-site", candidateId: candidate.id, status: "approved", note: "資材単価の対象外であることを確認しました" }),
+    }));
+    expect(withNote.status).toBe(200);
+  });
+
+  it("does not reveal a candidate across scopes", async () => {
+    const notFound = await reviewCandidate(new Request("http://localhost/api/billing-candidates/review", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clientId: "other-client", siteId: "other-site", candidateId: "demo-missing", status: "approved" }),
+    }));
+    expect(notFound.status).toBe(404);
+  });
+});
