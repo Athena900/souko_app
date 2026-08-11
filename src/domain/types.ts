@@ -2,6 +2,8 @@ export type PriceRuleKind = "shipment" | "pack" | "material" | "additional_work"
 
 export type FieldWorkStatus = "draft" | "submitted" | "review_required" | "accepted" | "cancelled";
 
+export type BillingCandidateReviewStatus = "ready" | "review_required" | "approved" | "rejected";
+
 export interface MaterialLine {
   code: string;
   name: string;

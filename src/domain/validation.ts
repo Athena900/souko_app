@@ -104,6 +104,24 @@ export const billingPreviewRequestSchema = z
   })
   .strict();
 
+export const billingCandidateRequestSchema = z
+  .object({
+    clientId: id,
+    siteId: id,
+    fieldWorkRecordId: id,
+  })
+  .strict();
+
+export const billingCandidateReviewRequestSchema = z
+  .object({
+    clientId: id,
+    siteId: id,
+    candidateId: id,
+    status: z.enum(["approved", "rejected"]),
+    note: z.string().trim().max(2_000).optional(),
+  })
+  .strict();
+
 export const rawShipmentRowSchema = z
   .object({
     clientId: id,
