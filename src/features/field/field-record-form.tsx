@@ -41,14 +41,14 @@ function yen(value: number): string {
   return `${new Intl.NumberFormat("ja-JP").format(value)}円`;
 }
 
-export function FieldRecordForm({ scope }: { scope: FieldScope | null }) {
+export function FieldRecordForm({ scope, demoMode = false }: { scope: FieldScope | null; demoMode?: boolean }) {
   const [record, setRecord] = useState<FieldWorkInput>(() => makeInitialRecord(scope));
   const [shipments, setShipments] = useState<ShipmentOption[]>([]);
   const [shipmentLoadState, setShipmentLoadState] = useState<{ scopeKey: string; error: string | null }>({ scopeKey: "", error: null });
   const [preview, setPreview] = useState<BillingCalculation | null>(null);
   const [message, setMessage] = useState<{ kind: "success" | "error" | "warning"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const canPreview = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const canPreview = demoMode;
   const clientId = scope?.clientId;
   const siteId = scope?.siteId;
   const scopeKey = clientId && siteId ? JSON.stringify([clientId, siteId]) : "";

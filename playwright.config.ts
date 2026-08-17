@@ -9,7 +9,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "DEMO_MODE=true NEXT_PUBLIC_DEMO_MODE=true npm run dev",
+    command: "APP_ENV=local DEMO_MODE=true npm run dev",
     url: "http://127.0.0.1:3000/api/health",
     reuseExistingServer: true,
   },

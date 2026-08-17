@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { ExcelImportPreview } from "@/src/features/import/excel-import-preview";
+import { isDemoMode } from "@/src/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default function ImportPage() {
         <span className="eyebrow">出荷データ</span>
         <h1>出荷Excelを確認</h1>
         <p className="lede">現場で入力したExcelを読み込み、同じ出荷番号の商品を1件の出荷としてまとめて確認します。</p>
-        <ExcelImportPreview />
+        <ExcelImportPreview demoMode={isDemoMode()} />
       </main>
     </div>
   );

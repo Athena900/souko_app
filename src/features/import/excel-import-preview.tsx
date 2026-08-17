@@ -24,7 +24,7 @@ function yenDate(value: string): string {
   return value.replace(/-/g, "/");
 }
 
-export function ExcelImportPreview() {
+export function ExcelImportPreview({ demoMode = false }: { demoMode?: boolean }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [registration, setRegistration] = useState<RegistrationResponse | null>(null);
@@ -98,7 +98,7 @@ export function ExcelImportPreview() {
       <section className="panel" aria-labelledby="excel-import-title">
         <h2 id="excel-import-title">Excelを確認する</h2>
         <p className="muted">「出荷指示貼り付け」シートだけを読み込み、出荷ごとに整理します。ここではデータを保存しません。</p>
-        {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && <p className="notice">受け取ったExcelを選び、「内容を確認する」で内容を確認してから登録してください。</p>}
+        {demoMode && <p className="notice">受け取ったExcelを選び、「内容を確認する」で内容を確認してから登録してください。</p>}
         <div className="field">
           <label htmlFor="shipmentExcel">Excelファイル（.xlsx）</label>
           <input id="shipmentExcel" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setPreview(null); setRegistration(null); setMessage(null); }} />

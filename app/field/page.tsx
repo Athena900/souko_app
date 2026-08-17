@@ -45,7 +45,7 @@ export default async function FieldPage() {
         <span className="eyebrow">現場作業</span>
         <h1>現場実績を入力</h1>
         <p className="lede">出荷番号を選び、梱包数と資材を入力します。箱内訳は必要な案件だけ登録できます。</p>
-        <FieldRecordForm scope={scope} />
+        <FieldRecordForm scope={scope} demoMode={isDemoMode()} />
       </main>
     </div>
   );
