@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { FieldRecordForm } from "@/src/features/field/field-record-form";
+import { AppFrame } from "@/src/features/layout/app-shell";
 import { hasSupabasePublicEnv, isDemoMode, usesDemoMemoryStorage } from "@/src/lib/env";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
@@ -35,18 +35,13 @@ async function loadFieldScope(): Promise<{ clientId: string; siteId: string } | 
 export default async function FieldPage() {
   const scope = await loadFieldScope();
   return (
-    <div className="shell">
-      <header className="topbar">
-        <Link className="brand" href="/">CSロジネット 倉庫業務</Link>
-        <nav className="nav" aria-label="現場メニュー"><Link href="/import">Excel取込</Link><Link href="/">トップへ戻る</Link></nav>
-      </header>
-      <main className="main">
+    <AppFrame active="field">
+      <div className="screen-page field-page">
+        <main className="main screen-main field-page-main">
         <DemoEnvironmentBanner />
-        <span className="eyebrow">STEP 2 · 現場作業</span>
-        <h1>箱ごとの作業を入力</h1>
-        <p className="lede">出荷番号を確認し、箱ごとの商品・資材・追加作業をスマホで記録します。</p>
         <FieldRecordForm scope={scope} demoMode={isDemoMode()} />
-      </main>
-    </div>
+        </main>
+      </div>
+    </AppFrame>
   );
 }

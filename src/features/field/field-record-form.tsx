@@ -304,7 +304,12 @@ export function FieldRecordForm({ scope, demoMode = false }: { scope: FieldScope
   return (
     <div className="field-layout">
       <section className="panel field-main-panel" aria-labelledby="field-form-title">
-        <div className="section-heading">
+        <div className="field-order-card">
+          <div><span>出荷番号</span><strong>{record.shipmentNo || "未選択"}</strong></div>
+          <div><span>荷主</span><strong>{demoMode ? "リベティ様" : "対象荷主"}</strong></div>
+          <div><span>作業日</span><strong>{record.workDate.replace(/-/g, "/")}</strong></div>
+        </div>
+        <div className="section-heading field-form-heading">
           <div><span className="tag">現場入力</span><h2 id="field-form-title">箱ごとの作業を記録</h2></div>
           <span className="progress-chip">{record.boxDetails.length}箱入力済み</span>
         </div>
@@ -359,7 +364,7 @@ export function FieldRecordForm({ scope, demoMode = false }: { scope: FieldScope
         <div className="actions field-actions">
           {canPreview && <button className="button secondary" type="button" onClick={loadDemoInput} disabled={busy}>入力例を入れる</button>}
           {canPreview && <button className="button" type="button" onClick={previewBilling} disabled={busy}>請求候補を計算</button>}
-          <button className="button primary-action" type="button" onClick={saveRecord} disabled={busy}>{busy ? "保存中…" : "入力を保存"}</button>
+          <button className="button primary-action" type="button" aria-label="入力を保存" onClick={saveRecord} disabled={busy}>{busy ? "保存中…" : "✓ 作業完了（入力を保存）"}</button>
         </div>
         {message && <div className={`status ${message.kind === "error" ? "error" : message.kind === "warning" ? "warning" : ""}`} role="status">{message.text}</div>}
       </section>

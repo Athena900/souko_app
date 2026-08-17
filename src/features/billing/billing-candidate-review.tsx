@@ -173,12 +173,22 @@ export function BillingCandidateReview({ scope }: { scope: BillingScope | null }
       </section>
 
       <section className="panel billing-result-panel" aria-labelledby="billing-result-title">
-        <h2 id="billing-result-title">請求候補</h2>
+        <div className="billing-panel-heading">
+          <div className="screen-title"><span className="screen-title-icon" aria-hidden="true">▤</span><h2 id="billing-result-title">請求内容の確認</h2></div>
+          <button className="outline-button" type="button" disabled title="デモ版では準備中です">▣ 印刷（PDF）</button>
+        </div>
         {!candidate ? <p className="muted">対象を選び、「請求候補を計算」を押してください。</p> : <>
           <div className="inline-row"><div><span className="summary-label">状態</span><strong className="status-text">{statusLabel(candidate.status)}</strong></div><div><span className="summary-label">出荷番号</span><strong>{candidate.shipmentNo}</strong></div></div>
+          <div className="billing-meta-grid">
+            <div><span>請求先</span><strong>対象荷主</strong></div>
+            <div><span>締日</span><strong>月末</strong></div>
+            <div><span>請求対象期間</span><strong>{candidate.workDate.replace(/-/g, "/")}</strong></div>
+            <div><span>請求書番号（候補）</span><strong>INV-{candidate.shipmentNo}</strong></div>
+          </div>
           <div className="summary-grid billing-summary-grid"><div><span className="summary-label">小計</span><strong>{yen(candidate.calculation.subtotalYen)}</strong></div><div><span className="summary-label">消費税</span><strong>{yen(candidate.calculation.taxYen)}</strong></div><div className="total-card"><span className="summary-label">税込合計</span><strong>{yen(candidate.calculation.totalYen)}</strong></div></div>
           {candidate.calculation.warnings.length > 0 && <div className="status warning"><strong>確認が必要</strong>{candidate.calculation.warnings.map((warning) => <div key={warning}>{warning}</div>)}</div>}
-          <div className="table-scroll"><table className="line-table"><thead><tr><th>明細</th><th>数量</th><th>単価</th><th>金額</th></tr></thead><tbody>{candidate.calculation.lines.map((line, index) => <tr key={`${index}-${line.workCode}-${line.priceRuleId}`}><td>{line.description}</td><td>{line.quantity}</td><td>{yen(line.unitPriceYen)}</td><td>{yen(line.totalYen)}</td></tr>)}</tbody></table></div>
+          <div className="billing-detail-heading"><strong>請求明細</strong><span>（上位10件を表示）</span></div>
+          <div className="table-scroll"><table className="line-table billing-detail-table"><thead><tr><th>No.</th><th>出荷番号</th><th>日付</th><th>品名</th><th>数量</th><th>単価</th><th>金額（税抜）</th></tr></thead><tbody>{candidate.calculation.lines.slice(0, 10).map((line, index) => <tr key={`${index}-${line.workCode}-${line.priceRuleId}`}><td>{index + 1}</td><td>{candidate.shipmentNo}</td><td>{candidate.workDate.slice(5).replace("-", "/")}</td><td>{line.description}</td><td>{line.quantity}</td><td>{yen(line.unitPriceYen)}</td><td>{yen(line.totalYen)}</td></tr>)}</tbody></table></div>
           {candidate.persisted ? <><div className="field" style={{ marginTop: 16 }}><label htmlFor="reviewNote">確認メモ（警告がある場合は必須）</label><textarea id="reviewNote" value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="例：数量を作業表と確認済み" /></div><div className="actions"><button className="button" type="button" onClick={() => reviewCandidate("approved")} disabled={busy || !canReview}>確認済みにする</button><button className="button secondary" type="button" onClick={() => reviewCandidate("rejected")} disabled={busy || !canReview}>差し戻す</button></div></> : <p className="notice">この候補は保存されていないため、確認結果を保存できません。</p>}
         </>}
       </section>

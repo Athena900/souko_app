@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { BillingCandidateReview } from "@/src/features/billing/billing-candidate-review";
+import { AppFrame } from "@/src/features/layout/app-shell";
 import { hasSupabasePublicEnv, isDemoMode, usesDemoMemoryStorage } from "@/src/lib/env";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
@@ -33,18 +33,13 @@ async function loadBillingScope(): Promise<{ clientId: string; siteId: string } 
 export default async function BillingPage() {
   const scope = await loadBillingScope();
   return (
-    <div className="shell">
-      <header className="topbar">
-        <Link className="brand" href="/">CSロジネット 倉庫業務</Link>
-        <nav className="nav" aria-label="事務メニュー"><Link href="/import">Excel取込</Link><Link href="/field">現場入力</Link><Link href="/">トップへ戻る</Link></nav>
-      </header>
-      <main className="main">
+    <AppFrame active="billing">
+      <div className="screen-page billing-page">
+        <main className="main screen-main">
         <DemoEnvironmentBanner />
-        <span className="eyebrow">STEP 3 · 事務確認</span>
-        <h1>請求候補を確認</h1>
-        <p className="lede">現場記録に単価を適用し、請求前の金額と明細を確認します。</p>
         <BillingCandidateReview scope={scope} />
-      </main>
-    </div>
+        </main>
+      </div>
+    </AppFrame>
   );
 }

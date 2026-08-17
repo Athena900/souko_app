@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { ExcelImportPreview } from "@/src/features/import/excel-import-preview";
+import { AppFrame } from "@/src/features/layout/app-shell";
 import { hasSupabasePublicEnv, isDemoMode, usesDemoMemoryStorage } from "@/src/lib/env";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
@@ -33,18 +33,13 @@ async function loadImportScope(): Promise<{ clientId: string; siteId: string } |
 export default async function ImportPage() {
   const scope = await loadImportScope();
   return (
-    <div className="shell">
-      <header className="topbar">
-        <Link className="brand" href="/">CSロジネット 倉庫業務</Link>
-        <nav className="nav" aria-label="事務メニュー"><Link href="/field">現場入力</Link><Link href="/billing">請求候補</Link><Link href="/">トップへ戻る</Link></nav>
-      </header>
-      <main className="main">
+    <AppFrame active="import">
+      <div className="screen-page import-page">
+        <main className="main screen-main">
         <DemoEnvironmentBanner />
-        <span className="eyebrow">STEP 1 · 事務作業</span>
-        <h1>Excel取込</h1>
-        <p className="lede">ファイルを選び、出荷番号ごとの内容を確認してから登録します。</p>
         <ExcelImportPreview demoMode={isDemoMode()} scope={scope} />
-      </main>
-    </div>
+        </main>
+      </div>
+    </AppFrame>
   );
 }
