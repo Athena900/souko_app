@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { FieldRecordForm } from "@/src/features/field/field-record-form";
-import { isDemoMode, hasSupabasePublicEnv } from "@/src/lib/env";
+import { hasSupabasePublicEnv, isDemoMode, usesDemoMemoryStorage } from "@/src/lib/env";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 async function loadFieldScope(): Promise<{ clientId: string; siteId: string } | null> {
-  if (isDemoMode()) return { clientId: "demo-client", siteId: "demo-site" };
+  if (usesDemoMemoryStorage()) return { clientId: "demo-client", siteId: "demo-site" };
   if (!hasSupabasePublicEnv()) return null;
 
   try {
@@ -42,9 +42,9 @@ export default async function FieldPage() {
       </header>
       <main className="main">
         <DemoEnvironmentBanner />
-        <span className="eyebrow">現場作業</span>
-        <h1>現場実績を入力</h1>
-        <p className="lede">出荷番号を選び、梱包数と資材を入力します。箱内訳は必要な案件だけ登録できます。</p>
+        <span className="eyebrow">STEP 2 · 現場作業</span>
+        <h1>箱ごとの作業を入力</h1>
+        <p className="lede">出荷番号を確認し、箱ごとの商品・資材・追加作業をスマホで記録します。</p>
         <FieldRecordForm scope={scope} demoMode={isDemoMode()} />
       </main>
     </div>

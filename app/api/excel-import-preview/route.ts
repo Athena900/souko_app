@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseLibertyWorkbook } from "@/src/domain/excel-import";
-import { isDemoMode } from "@/src/lib/env";
+import { isDemoMode, usesDemoMemoryStorage, usesSupabaseStorage, hasSupabasePublicEnv } from "@/src/lib/env";
 import { sha256Hex } from "@/src/server/import/file-hash";
 import {
   assertBodySize,
@@ -44,8 +44,11 @@ export async function POST(request: Request) {
   const siteId = request.headers.get("x-site-id")?.trim() || (isDemoMode() ? "demo-site" : "");
   if (!clientId || !siteId) return NextResponse.json({ error: "荷主・拠点ヘッダーが必要です" }, { status: 400 });
 
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (usesSupabaseStorage() && !hasSupabasePublicEnv()) return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
+
   try {
-    if (!isDemoMode()) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
+    if (!useMemoryStorage) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
   } catch (error) {
     if (error instanceof RouteUnauthorizedError) return NextResponse.json({ error: error.message }, { status: 401 });
     if (error instanceof RouteForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 });

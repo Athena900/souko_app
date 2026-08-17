@@ -11,6 +11,26 @@ export function hasSupabasePublicEnv(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 }
 
+export type StorageMode = "memory" | "supabase";
+
+/**
+ * デモ画面の表示（DEMO_MODE）と保存先を分離する。
+ *
+ * デモ環境は既定ではメモリ保存のままにし、Auth・RLS・Supabase環境変数を
+ * 準備できた環境だけ `DEMO_STORAGE=supabase` で永続化する。
+ */
+export function getStorageMode(): StorageMode {
+  return process.env.DEMO_STORAGE?.trim().toLowerCase() === "supabase" ? "supabase" : "memory";
+}
+
+export function usesSupabaseStorage(): boolean {
+  return !isDemoMode() || getStorageMode() === "supabase";
+}
+
+export function usesDemoMemoryStorage(): boolean {
+  return isDemoMode() && getStorageMode() === "memory";
+}
+
 export function isDemoMode(): boolean {
   if (process.env.DEMO_MODE === "false") return false;
   // 本番環境では、誤ってDEMO_MODE=trueを設定してもデモを有効にしない。

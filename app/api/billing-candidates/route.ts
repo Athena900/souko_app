@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { calculateDemoBillingCandidate, BillingCandidateNotFoundError, BillingCandidatePermissionError, BillingCandidateRuleError, persistSupabaseBillingCandidate } from "@/src/server/repositories/billing-candidate-repository";
 import { billingCandidateRequestSchema } from "@/src/domain/validation";
 import { demoPriceRules } from "@/src/domain/demo-fixtures";
-import { hasSupabasePublicEnv, isDemoMode } from "@/src/lib/env";
+import { hasSupabasePublicEnv, usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
 import {
   assertBodySize,
   assertSameOrigin,
@@ -31,7 +31,8 @@ export async function POST(request: Request) {
     if (error instanceof RouteForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 });
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
   }
-  if (!isDemoMode() && !hasSupabasePublicEnv()) return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (usesSupabaseStorage() && !hasSupabasePublicEnv()) return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
 
   let body: unknown;
   try {
@@ -47,13 +48,13 @@ export async function POST(request: Request) {
 
   const { clientId, siteId, fieldWorkRecordId } = parsed.data;
   try {
-    if (!isDemoMode()) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
-    const record = isDemoMode()
+    if (!useMemoryStorage) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
+    const record = useMemoryStorage
       ? getDemoBillingSourceFieldWorkRecord(fieldWorkRecordId, clientId, siteId)
       : await getSupabaseBillingSourceFieldWorkRecord(fieldWorkRecordId, clientId, siteId);
     if (!record) return NextResponse.json({ error: "対象の現場記録が見つかりません" }, { status: 404 });
 
-    if (!isDemoMode()) {
+    if (!useMemoryStorage) {
       const candidate = await persistSupabaseBillingCandidate(clientId, siteId, record.id, parsed.data.recalculate ?? false);
       return NextResponse.json(candidate, { status: 200 });
     }

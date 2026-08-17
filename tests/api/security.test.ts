@@ -28,6 +28,8 @@ function sameOriginHeaders(contentType = "application/json") {
 
 describe("API security boundaries", () => {
   const originalDemoMode = process.env.DEMO_MODE;
+  const originalAppEnv = process.env.APP_ENV;
+  const originalDemoStorage = process.env.DEMO_STORAGE;
 
   beforeEach(() => {
     delete process.env.DEMO_MODE;
@@ -38,6 +40,10 @@ describe("API security boundaries", () => {
   afterEach(() => {
     if (originalDemoMode === undefined) delete process.env.DEMO_MODE;
     else process.env.DEMO_MODE = originalDemoMode;
+    if (originalAppEnv === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = originalAppEnv;
+    if (originalDemoStorage === undefined) delete process.env.DEMO_STORAGE;
+    else process.env.DEMO_STORAGE = originalDemoStorage;
   });
 
   it("does not calculate a billing preview from client-supplied rules in production mode", async () => {
@@ -108,6 +114,17 @@ describe("API security boundaries", () => {
       headers: sameOriginHeaders(),
       body: JSON.stringify({ clientId: "client-a", siteId: "site-1", candidateId: "candidate-1", status: "approved", note: "確認" }),
     }));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Supabaseの設定が必要です" });
+  });
+
+  it("does not silently fall back to memory storage in a persistent demo", async () => {
+    process.env.APP_ENV = "demo";
+    process.env.DEMO_MODE = "true";
+    process.env.DEMO_STORAGE = "supabase";
+
+    const response = await shipments(new Request("http://localhost/api/shipments?clientId=demo-client&siteId=demo-site"));
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "Supabaseの設定が必要です" });

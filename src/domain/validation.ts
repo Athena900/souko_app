@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 const id = z.string().trim().min(1).max(120);
+const optionalId = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  id.optional(),
+);
 const positiveInteger = z.number().int().min(0).max(1_000_000);
 const yenAmount = z.number().int().min(0).max(1_000_000_000_000_000);
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付はYYYY-MM-DDで入力してください");
@@ -24,7 +28,7 @@ export const additionalWorkLineSchema = z
 export const boxItemSchema = z
   .object({
     sku: id,
-    name: id.optional(),
+    name: optionalId,
     quantity: positiveInteger,
   })
   .strict();
@@ -60,6 +64,14 @@ export const fieldWorkInputSchema = z
         code: "custom",
         path: ["boxDetails"],
         message: "箱番号は重複させないでください",
+      });
+    }
+
+    if (value.boxDetails.some((box) => box.items.length === 0)) {
+      context.addIssue({
+        code: "custom",
+        path: ["boxDetails"],
+        message: "商品を入力していない箱があります",
       });
     }
 

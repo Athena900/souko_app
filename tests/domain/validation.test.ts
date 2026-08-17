@@ -24,4 +24,21 @@ describe("fieldWorkInputSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.issues.some((issue) => issue.path[0] === "notes")).toBe(true);
   });
+
+  it("rejects a box that was added without a product line", () => {
+    const result = fieldWorkInputSchema.safeParse({
+      ...demoFieldWorkInput,
+      boxDetails: [{ boxNo: "3", items: [], materialLines: [] }],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues.some((issue) => issue.path[0] === "boxDetails")).toBe(true);
+  });
+
+  it("allows an optional product name to be left blank", () => {
+    const result = fieldWorkInputSchema.safeParse({
+      ...demoFieldWorkInput,
+      boxDetails: [{ boxNo: "1", items: [{ sku: "SKU-1", name: "", quantity: 1 }], materialLines: [] }],
+    });
+    expect(result.success).toBe(true);
+  });
 });

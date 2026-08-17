@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { calculateFieldWorkBilling } from "@/src/domain/pricing";
 import { billingPreviewRequestSchema } from "@/src/domain/validation";
 import { demoPriceRules } from "@/src/domain/demo-fixtures";
-import { isDemoMode } from "@/src/lib/env";
+import { usesDemoMemoryStorage } from "@/src/lib/env";
 import {
   assertBodySize,
   assertSameOrigin,
@@ -43,7 +43,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const rules = isDemoMode()
+    const useMemoryStorage = usesDemoMemoryStorage();
+    const rules = useMemoryStorage
       ? parsed.data.priceRules ?? demoPriceRules
       : (await requireMembership(parsed.data.record.clientId, parsed.data.record.siteId, ["office", "manager", "admin"]),
         await loadApprovedPriceRules(parsed.data.record.clientId, parsed.data.record.siteId, parsed.data.record.workDate));

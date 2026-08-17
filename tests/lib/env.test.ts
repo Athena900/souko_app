@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { isDemoMode } from "@/src/lib/env";
+import { getStorageMode, isDemoMode, usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
 
 const originalDemoMode = process.env.DEMO_MODE;
 const originalAppEnv = process.env.APP_ENV;
 const originalVercelEnv = process.env.VERCEL_ENV;
 const originalNodeEnv = process.env.NODE_ENV;
+const originalDemoStorage = process.env.DEMO_STORAGE;
 const env = process.env as Record<string, string | undefined>;
 
 afterEach(() => {
@@ -16,6 +17,8 @@ afterEach(() => {
   else env.VERCEL_ENV = originalVercelEnv;
   if (originalNodeEnv === undefined) delete env.NODE_ENV;
   else env.NODE_ENV = originalNodeEnv;
+  if (originalDemoStorage === undefined) delete env.DEMO_STORAGE;
+  else env.DEMO_STORAGE = originalDemoStorage;
 });
 
 describe("isDemoMode", () => {
@@ -76,5 +79,36 @@ describe("isDemoMode", () => {
     env.VERCEL_ENV = "preview";
 
     expect(isDemoMode()).toBe(false);
+  });
+});
+
+describe("storage mode", () => {
+  it("defaults a demo environment to memory storage", () => {
+    env.APP_ENV = "demo";
+    env.DEMO_MODE = "true";
+    delete env.DEMO_STORAGE;
+
+    expect(getStorageMode()).toBe("memory");
+    expect(usesDemoMemoryStorage()).toBe(true);
+    expect(usesSupabaseStorage()).toBe(false);
+  });
+
+  it("enables Supabase storage only when explicitly configured for a demo", () => {
+    env.APP_ENV = "demo";
+    env.DEMO_MODE = "true";
+    env.DEMO_STORAGE = "supabase";
+
+    expect(getStorageMode()).toBe("supabase");
+    expect(usesDemoMemoryStorage()).toBe(false);
+    expect(usesSupabaseStorage()).toBe(true);
+  });
+
+  it("always uses Supabase storage outside demo mode", () => {
+    env.APP_ENV = "production";
+    env.DEMO_MODE = "false";
+    env.DEMO_STORAGE = "memory";
+
+    expect(usesSupabaseStorage()).toBe(true);
+    expect(usesDemoMemoryStorage()).toBe(false);
   });
 });

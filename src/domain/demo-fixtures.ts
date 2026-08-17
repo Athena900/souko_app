@@ -55,8 +55,13 @@ export const demoFieldWorkInput: FieldWorkInput = {
   boxDetails: [
     {
       boxNo: "1",
-      items: [{ sku: "SKU-001", name: "サンプル商品", quantity: 1 }],
-      materialLines: [],
+      items: [{ sku: "SKU-001", name: "サンプル商品A", quantity: 1 }],
+      materialLines: [{ code: "bubble_wrap", name: "緩衝材", quantity: 2 }],
+    },
+    {
+      boxNo: "2",
+      items: [{ sku: "SKU-002", name: "サンプル商品B", quantity: 2 }],
+      materialLines: [{ code: "bubble_wrap", name: "緩衝材", quantity: 1 }],
     },
   ],
   notes: "デモ入力",

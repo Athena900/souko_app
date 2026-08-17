@@ -16,10 +16,9 @@ export default function HomePage() {
       <main className="main">
         <DemoEnvironmentBanner />
         <span className="eyebrow">倉庫業務デモ</span>
-        <h1>倉庫作業をスマホで記録し、<br />請求確認までつなぐ。</h1>
+        <h1>倉庫業務をかんたんに管理</h1>
         <p className="lede">
-          スマホで入力した梱包・資材・追加作業を出荷番号へ結び付け、単価計算の根拠を残したまま確認用データを作ります。
-          Excelの取込から請求前の確認までを一つの流れで確認できます。
+          Excelを取り込み、現場の箱・資材・追加作業をスマホで記録し、請求候補の確認までを一つの流れで行います。
         </p>
         <div className="actions">
           <Link className="button" href="/import">① Excel取込を始める</Link>
@@ -40,7 +39,7 @@ export default function HomePage() {
           </ol>
         </section>
 
-        <section className="grid" aria-label="実装状況">
+        <section className="grid" aria-label="業務の流れ">
           <div className="panel">
             <span className="tag">STEP 1</span>
             <div className="metric">Excel取込</div>

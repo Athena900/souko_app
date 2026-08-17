@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { billingCandidateReviewRequestSchema } from "@/src/domain/validation";
-import { hasSupabasePublicEnv, isDemoMode } from "@/src/lib/env";
+import { hasSupabasePublicEnv, usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
 import {
   assertBodySize,
   assertSameOrigin,
@@ -32,7 +32,8 @@ export async function POST(request: Request) {
     if (error instanceof RouteForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 });
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
   }
-  if (!isDemoMode() && !hasSupabasePublicEnv()) return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (usesSupabaseStorage() && !hasSupabasePublicEnv()) return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
 
   let body: unknown;
   try {
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "確認内容を確認してください", issues: parsed.error.issues }, { status: 400 });
 
   try {
-    const result = isDemoMode()
+    const result = useMemoryStorage
       ? reviewDemoBillingCandidate(
           parsed.data.candidateId,
           parsed.data.clientId,

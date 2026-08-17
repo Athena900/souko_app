@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasSupabasePublicEnv, isDemoMode } from "@/src/lib/env";
+import { hasSupabasePublicEnv, isDemoMode, usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
 import {
   requireMembership,
   RouteConfigurationError,
@@ -50,13 +50,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "limitの指定が不正です" }, { status: 400 });
   }
 
-  if (!isDemoMode() && !hasSupabasePublicEnv()) {
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (usesSupabaseStorage() && !hasSupabasePublicEnv()) {
     return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
   }
 
   try {
-    if (!isDemoMode()) await requireMembership(clientId, siteId, ["field", "office", "manager", "admin"]);
-    const shipments = isDemoMode()
+    if (!useMemoryStorage) await requireMembership(clientId, siteId, ["field", "office", "manager", "admin"]);
+    const shipments = useMemoryStorage
       ? listDemoExcelShipments({ clientId, siteId, search, workDate, limit })
       : await listSupabaseShipments({ clientId, siteId, search, workDate, limit });
     return NextResponse.json({ shipments }, { status: 200 });

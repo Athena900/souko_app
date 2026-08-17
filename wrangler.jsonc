@@ -15,14 +15,16 @@
       "name": "cslogi-warehouse-demo",
       "vars": {
         "APP_ENV": "demo",
-        "DEMO_MODE": "true"
+        "DEMO_MODE": "true",
+        "DEMO_STORAGE": "memory"
       }
     },
     "production": {
       "name": "cslogi-warehouse",
       "vars": {
         "APP_ENV": "production",
-        "DEMO_MODE": "false"
+        "DEMO_MODE": "false",
+        "DEMO_STORAGE": "supabase"
       }
     }
   }

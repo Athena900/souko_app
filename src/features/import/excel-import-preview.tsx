@@ -20,11 +20,16 @@ interface RegistrationResponse {
   error?: string;
 }
 
+interface ImportScope {
+  clientId: string;
+  siteId: string;
+}
+
 function yenDate(value: string): string {
   return value.replace(/-/g, "/");
 }
 
-export function ExcelImportPreview({ demoMode = false }: { demoMode?: boolean }) {
+export function ExcelImportPreview({ demoMode = false, scope }: { demoMode?: boolean; scope: ImportScope | null }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [registration, setRegistration] = useState<RegistrationResponse | null>(null);
@@ -44,9 +49,14 @@ export function ExcelImportPreview({ demoMode = false }: { demoMode?: boolean })
       const formData = new FormData();
       formData.append("file", file);
       const sourceId = typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `preview-${Date.now()}`;
+      const headers: Record<string, string> = { "x-source-file-version-id": sourceId };
+      if (scope) {
+        headers["x-client-id"] = scope.clientId;
+        headers["x-site-id"] = scope.siteId;
+      }
       const response = await fetch("/api/excel-import-preview", {
         method: "POST",
-        headers: { "x-source-file-version-id": sourceId },
+        headers,
         body: formData,
       });
       const body = (await response.json()) as PreviewResponse;
@@ -74,12 +84,17 @@ export function ExcelImportPreview({ demoMode = false }: { demoMode?: boolean })
     try {
       const formData = new FormData();
       formData.append("file", file);
+      const headers: Record<string, string> = {
+        "x-source-file-version-id": preview.sourceFileVersionId,
+        "x-preview-sha256": preview.sha256,
+      };
+      if (scope) {
+        headers["x-client-id"] = scope.clientId;
+        headers["x-site-id"] = scope.siteId;
+      }
       const response = await fetch("/api/excel-import-register", {
         method: "POST",
-        headers: {
-          "x-source-file-version-id": preview.sourceFileVersionId,
-          "x-preview-sha256": preview.sha256,
-        },
+        headers,
         body: formData,
       });
       const body = (await response.json()) as RegistrationResponse;
@@ -94,14 +109,24 @@ export function ExcelImportPreview({ demoMode = false }: { demoMode?: boolean })
   }
 
   return (
-    <div className="two-column">
-      <section className="panel" aria-labelledby="excel-import-title">
+    <div className="import-layout">
+      <ol className="import-steps" aria-label="Excel取込の手順">
+        <li className="active"><span>1</span><strong>ファイルを選ぶ</strong></li>
+        <li><span>2</span><strong>内容を確認</strong></li>
+        <li><span>3</span><strong>登録する</strong></li>
+      </ol>
+      {!scope && <section className="panel full-panel" aria-labelledby="excel-import-access-title">
+        <h2 id="excel-import-access-title">Excel取込を利用できません</h2>
+        <p className="notice">ログイン済みの事務担当者に、対象荷主・拠点の所属が必要です。ログイン後にもう一度開いてください。</p>
+      </section>}
+      {scope && <section className="panel upload-card" aria-labelledby="excel-import-title">
         <h2 id="excel-import-title">Excelを確認する</h2>
         <p className="muted">「出荷指示貼り付け」シートだけを読み込み、出荷ごとに整理します。ここではデータを保存しません。</p>
         {demoMode && <p className="notice">受け取ったExcelを選び、「内容を確認する」で内容を確認してから登録してください。</p>}
-        <div className="field">
+        <div className="upload-dropzone">
           <label htmlFor="shipmentExcel">Excelファイル（.xlsx）</label>
           <input id="shipmentExcel" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setPreview(null); setRegistration(null); setMessage(null); }} />
+          <p className="muted">PCではドラッグ＆ドロップ、スマホではファイルを選択できます。</p>
         </div>
         <div className="actions">
           <button className="button" type="button" onClick={previewFile} disabled={busy}>{busy ? "確認中…" : "内容を確認する"}</button>
@@ -112,13 +137,14 @@ export function ExcelImportPreview({ demoMode = false }: { demoMode?: boolean })
           <div className="status" role="status">登録番号：{registration.importRunId} / 出荷{registration.shipmentCount}件・商品明細{registration.detailCount}行</div>
           <div className="actions"><Link className="button secondary" href="/field">登録した出荷で現場入力へ</Link></div>
         </>}
-      </section>
+      </section>}
 
-      <section className="panel" aria-labelledby="excel-summary-title">
+      {scope && <section className="panel import-summary-panel" aria-labelledby="excel-summary-title">
         <h2 id="excel-summary-title">確認結果</h2>
         {!preview ? <p className="muted">Excelを選ぶと、出荷件数と確認が必要な行を表示します。</p> : <>
           <p className="muted">{preview.fileName} / {preview.sourceSheetName}</p>
-          <div className="summary-grid">
+          <div className="summary-grid import-summary-grid">
+            <div><span className="summary-label">出荷グループ</span><strong>{preview.accepted.length}</strong></div>
             <div><span className="summary-label">出荷件数</span><strong>{preview.shipmentCount}</strong></div>
             <div><span className="summary-label">商品明細行</span><strong>{preview.detailRowCount}</strong></div>
             <div><span className="summary-label">確認が必要</span><strong>{preview.exceptions.length + preview.warnings.length}</strong></div>
@@ -127,9 +153,9 @@ export function ExcelImportPreview({ demoMode = false }: { demoMode?: boolean })
           {preview.warnings.length > 0 && <div className="status warning"><strong>確認が必要な内容</strong>{preview.warnings.slice(0, 10).map((item) => <div key={`${item.code}-${item.sourceRowNumber}-${item.shipmentNo}`}>行{item.sourceRowNumber ?? "-"}：{item.message}</div>)}{preview.warnings.length > 10 && <div>ほか{preview.warnings.length - 10}件</div>}</div>}
           {preview.exceptions.length === 0 && <p className="muted">エラーはありません。警告を確認したうえで「この内容で登録する」を押すと保存します。</p>}
         </>}
-      </section>
+      </section>}
 
-      {preview && <section className="panel full-panel" aria-labelledby="shipment-list-title">
+      {scope && preview && <section className="panel full-panel" aria-labelledby="shipment-list-title">
         <h2 id="shipment-list-title">出荷の一覧（先頭20件）</h2>
         <div className="table-scroll">
           <table className="line-table">

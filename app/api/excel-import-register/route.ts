@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseLibertyWorkbook } from "@/src/domain/excel-import";
-import { hasSupabasePublicEnv, isDemoMode } from "@/src/lib/env";
+import { hasSupabasePublicEnv, isDemoMode, usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
 import { sha256Hex } from "@/src/server/import/file-hash";
 import {
   assertBodySize,
@@ -41,7 +41,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
   }
 
-  if (!isDemoMode() && !hasSupabasePublicEnv()) {
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (usesSupabaseStorage() && !hasSupabasePublicEnv()) {
     return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
   }
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
   if (!previewSha256 || !SHA256_PATTERN.test(previewSha256)) {
     return NextResponse.json({ error: "確認済みExcelのハッシュが必要です" }, { status: 400 });
   }
-  if (!isDemoMode() && !UUID_PATTERN.test(sourceFileVersionId)) {
+  if (!useMemoryStorage && !UUID_PATTERN.test(sourceFileVersionId)) {
     return NextResponse.json({ error: "原本版IDの形式が不正です" }, { status: 400 });
   }
 
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
   if (!clientId || !siteId) return NextResponse.json({ error: "荷主・拠点ヘッダーが必要です" }, { status: 400 });
 
   try {
-    if (!isDemoMode()) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
+    if (!useMemoryStorage) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
   } catch (error) {
     if (error instanceof RouteUnauthorizedError) return NextResponse.json({ error: error.message }, { status: 401 });
     if (error instanceof RouteForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 });
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const repository = isDemoMode() ? createDemoExcelImportRepository() : createSupabaseExcelImportRepository();
+    const repository = useMemoryStorage ? createDemoExcelImportRepository() : createSupabaseExcelImportRepository();
     const registration = await repository.register({
       sourceFileVersionId,
       clientId,

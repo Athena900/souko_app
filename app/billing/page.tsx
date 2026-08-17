@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { BillingCandidateReview } from "@/src/features/billing/billing-candidate-review";
-import { hasSupabasePublicEnv, isDemoMode } from "@/src/lib/env";
+import { hasSupabasePublicEnv, isDemoMode, usesDemoMemoryStorage } from "@/src/lib/env";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 async function loadBillingScope(): Promise<{ clientId: string; siteId: string } | null> {
-  if (isDemoMode()) return { clientId: "demo-client", siteId: "demo-site" };
+  if (usesDemoMemoryStorage()) return { clientId: "demo-client", siteId: "demo-site" };
   if (!hasSupabasePublicEnv()) return null;
 
   try {
@@ -40,7 +40,7 @@ export default async function BillingPage() {
       </header>
       <main className="main">
         <DemoEnvironmentBanner />
-        <span className="eyebrow">事務確認</span>
+        <span className="eyebrow">STEP 3 · 事務確認</span>
         <h1>請求候補を確認</h1>
         <p className="lede">現場記録に単価を適用し、請求前の金額と明細を確認します。</p>
         <BillingCandidateReview scope={scope} />

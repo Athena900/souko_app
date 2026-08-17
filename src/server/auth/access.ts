@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
-import { isDemoMode } from "@/src/lib/env";
+import { usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
 
 export class RouteUnauthorizedError extends Error {}
 export class RouteForbiddenError extends Error {}
@@ -8,7 +8,7 @@ export class RoutePayloadTooLargeError extends Error {}
 export class RouteBodyParseError extends Error {}
 
 export function assertSameOrigin(request: Request): void {
-  if (isDemoMode()) return;
+  if (usesDemoMemoryStorage()) return;
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
   if (!origin || !host) throw new RouteForbiddenError("不正なリクエストです");
@@ -40,7 +40,7 @@ export async function requireMembership(
   siteId: string,
   roles: readonly ("field" | "office" | "manager" | "admin")[],
 ): Promise<{ userId: string; role: string }> {
-  if (isDemoMode()) return { userId: "demo-user", role: "admin" };
+  if (!usesSupabaseStorage()) return { userId: "demo-user", role: "admin" };
 
   try {
     const supabase = await createSupabaseServerClient();

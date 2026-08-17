@@ -22,3 +22,14 @@ test("field user can load the demo input example", async ({ page }) => {
   await page.getByRole("button", { name: "請求候補を計算" }).click();
   await expect(page.getByText("1,166円")).toBeVisible();
 });
+
+test("field user can review multiple boxes in the demo input", async ({ page }) => {
+  await page.goto("/field");
+  await page.getByRole("button", { name: "入力例を入れる" }).click();
+  await expect(page.getByRole("tab", { name: /箱 1/ })).toBeVisible();
+  await expect(page.getByRole("tab", { name: /箱 2/ })).toBeVisible();
+  await page.getByRole("tab", { name: /箱 2/ }).click();
+  await expect(page.getByLabel("箱2の商品コード")).toHaveValue("SKU-002");
+  await expect(page.getByLabel("箱2の商品数量")).toHaveValue("2");
+  await expect(page.getByRole("status").filter({ hasText: "箱1・箱2の内容を確認して保存できます" })).toBeVisible();
+});

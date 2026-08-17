@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasSupabasePublicEnv, isDemoMode } from "@/src/lib/env";
+import { hasSupabasePublicEnv, isDemoMode, usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
 import {
   assertBodySize,
   assertSameOrigin,
@@ -55,11 +55,12 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "limitの指定が不正です" }, { status: 400 });
   }
-  if (!isDemoMode() && !hasSupabasePublicEnv()) return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (usesSupabaseStorage() && !hasSupabasePublicEnv()) return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
 
   try {
-    if (!isDemoMode()) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
-    const records = isDemoMode()
+    if (!useMemoryStorage) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
+    const records = useMemoryStorage
       ? listDemoBillingSourceFieldWorkRecords({ clientId, siteId, limit })
       : await listSupabaseBillingSourceFieldWorkRecords({ clientId, siteId, limit });
     return NextResponse.json({ records: records.map(sourceSummary) }, { status: 200 });
@@ -82,7 +83,8 @@ export async function POST(request: Request) {
     if (error instanceof RouteForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 });
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
   }
-  if (!isDemoMode() && !hasSupabasePublicEnv()) {
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (usesSupabaseStorage() && !hasSupabasePublicEnv()) {
     return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
   }
   let body: unknown;
@@ -103,10 +105,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (!isDemoMode()) {
+    if (!useMemoryStorage) {
       await requireMembership(parsed.data.clientId, parsed.data.siteId, ["field", "office", "manager", "admin"]);
     }
-    const repository = isDemoMode() ? createDemoFieldWorkRepository() : createSupabaseFieldWorkRepository();
+    const repository = useMemoryStorage ? createDemoFieldWorkRepository() : createSupabaseFieldWorkRepository();
     const result = await repository.create(parsed.data);
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

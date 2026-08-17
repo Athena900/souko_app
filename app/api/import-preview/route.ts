@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseShipmentCsv } from "@/src/domain/csv-import";
-import { isDemoMode } from "@/src/lib/env";
+import { usesDemoMemoryStorage } from "@/src/lib/env";
 import {
   assertBodySize,
   assertSameOrigin,
@@ -35,12 +35,13 @@ export async function POST(request: Request) {
 
   const clientId = request.headers.get("x-client-id")?.trim();
   const siteId = request.headers.get("x-site-id")?.trim();
-  if (!isDemoMode() && (!clientId || !siteId)) {
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (!useMemoryStorage && (!clientId || !siteId)) {
     return NextResponse.json({ error: "荷主・拠点ヘッダーが必要です" }, { status: 400 });
   }
 
   try {
-    if (!isDemoMode()) await requireMembership(clientId as string, siteId as string, ["office", "manager", "admin"]);
+    if (!useMemoryStorage) await requireMembership(clientId as string, siteId as string, ["office", "manager", "admin"]);
   } catch (error) {
     if (error instanceof RouteUnauthorizedError) return NextResponse.json({ error: error.message }, { status: 401 });
     if (error instanceof RouteForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 });
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
   }
   try {
     const result = parseShipmentCsv(buffer, sourceFileVersionId, encoding);
-    if (!isDemoMode() && result.accepted.some((row) => row.clientId !== clientId || row.siteId !== siteId)) {
+    if (!useMemoryStorage && result.accepted.some((row) => row.clientId !== clientId || row.siteId !== siteId)) {
       return NextResponse.json({ error: "CSVの荷主・拠点がヘッダーと一致しません" }, { status: 400 });
     }
     return NextResponse.json(result, { status: 200 });
