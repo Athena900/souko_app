@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cslogi-warehouse-demo",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-17",
+  "compatibility_flags": ["nodejs_compat"],
+  // NEXT_PUBLIC_SUPABASE_* はNext.jsのビルド時に必要なため、
+  // CloudflareのBuild Variablesまたはローカルの.envで注入し、Gitには保存しない。
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "env": {
+    "demo": {
+      "name": "cslogi-warehouse-demo",
+      "vars": {
+        "APP_ENV": "demo",
+        "DEMO_MODE": "true"
+      }
+    },
+    "production": {
+      "name": "cslogi-warehouse",
+      "vars": {
+        "APP_ENV": "production",
+        "DEMO_MODE": "false"
+      }
+    }
+  }
+}
