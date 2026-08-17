@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { ExcelImportResult } from "@/src/domain/excel-import";
 
@@ -97,6 +98,7 @@ export function ExcelImportPreview() {
       <section className="panel" aria-labelledby="excel-import-title">
         <h2 id="excel-import-title">Excelを確認する</h2>
         <p className="muted">「出荷指示貼り付け」シートだけを読み込み、出荷ごとに整理します。ここではデータを保存しません。</p>
+        {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && <p className="notice">受け取ったExcelを選び、「内容を確認する」で内容を確認してから登録してください。</p>}
         <div className="field">
           <label htmlFor="shipmentExcel">Excelファイル（.xlsx）</label>
           <input id="shipmentExcel" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setPreview(null); setRegistration(null); setMessage(null); }} />
@@ -106,7 +108,10 @@ export function ExcelImportPreview() {
           {preview && <button className="button secondary" type="button" onClick={registerFile} disabled={busy || preview.exceptions.length > 0 || Boolean(registration)}>{registration ? "登録済み" : busy ? "登録中…" : "この内容で登録する"}</button>}
         </div>
         {message && <div className={`status ${message.kind === "error" ? "error" : ""}`} role="status">{message.text}</div>}
-        {registration && <div className="status" role="status">登録番号：{registration.importRunId} / 出荷{registration.shipmentCount}件・商品明細{registration.detailCount}行</div>}
+        {registration && <>
+          <div className="status" role="status">登録番号：{registration.importRunId} / 出荷{registration.shipmentCount}件・商品明細{registration.detailCount}行</div>
+          <div className="actions"><Link className="button secondary" href="/field">登録した出荷で現場入力へ</Link></div>
+        </>}
       </section>
 
       <section className="panel" aria-labelledby="excel-summary-title">

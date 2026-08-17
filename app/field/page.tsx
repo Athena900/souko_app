@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { FieldRecordForm } from "@/src/features/field/field-record-form";
 import { isDemoMode, hasSupabasePublicEnv } from "@/src/lib/env";
 import { createSupabaseServerClient } from "@/src/lib/supabase/server";
@@ -40,7 +41,8 @@ export default async function FieldPage() {
         <nav className="nav" aria-label="現場メニュー"><Link href="/import">Excel取込</Link><Link href="/">トップへ戻る</Link></nav>
       </header>
       <main className="main">
-        <span className="eyebrow">Field work</span>
+        <DemoEnvironmentBanner />
+        <span className="eyebrow">現場作業</span>
         <h1>現場実績を入力</h1>
         <p className="lede">出荷番号を選び、梱包数と資材を入力します。箱内訳は必要な案件だけ登録できます。</p>
         <FieldRecordForm scope={scope} />

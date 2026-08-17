@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 
 export default function HomePage() {
   return (
@@ -9,58 +10,65 @@ export default function HomePage() {
           <Link href="/import">Excel取込</Link>
           <Link href="/field">現場入力</Link>
           <Link href="/billing">請求候補</Link>
-          <Link href="/api/health">稼働確認</Link>
         </nav>
       </header>
 
       <main className="main">
-        <span className="eyebrow">Module 1 / Module 2</span>
-        <h1>出荷と現場実績を、<br />請求候補までつなぐ。</h1>
+        <DemoEnvironmentBanner />
+        <span className="eyebrow">倉庫業務デモ</span>
+        <h1>倉庫作業をスマホで記録し、<br />請求確認までつなぐ。</h1>
         <p className="lede">
           スマホで入力した梱包・資材・追加作業を出荷番号へ結び付け、単価計算の根拠を残したまま確認用データを作ります。
-          正式な請求確定と請求書発行は後続モジュールで行います。
+          Excelの取込から請求前の確認までを一つの流れで確認できます。
         </p>
         <div className="actions">
-          <Link className="button" href="/field">現場入力を開く</Link>
+          <Link className="button" href="/import">① Excel取込を始める</Link>
+          <Link className="button secondary" href="/field">② 現場入力を試す</Link>
+          <Link className="button secondary" href="/billing">③ 請求候補を見る</Link>
         </div>
+
+        <section className="demo-guide panel" aria-labelledby="demo-guide-title">
+          <div>
+            <span className="tag">デモの流れ</span>
+            <h2 id="demo-guide-title">Excelから請求候補までを一周できます</h2>
+            <p className="muted">実際の業務でどこが楽になるかを、次の3画面で確認できます。</p>
+          </div>
+          <ol className="demo-flow">
+            <li><strong>Excelを確認・登録</strong><span>出荷指示NOが同じ行を1件の出荷にまとめます。</span></li>
+            <li><strong>現場実績を入力</strong><span>箱数・緩衝材・追加梱包・箱内訳をスマホで記録します。</span></li>
+            <li><strong>請求候補を確認</strong><span>単価・税・合計と明細を表示し、確認済みにできます。</span></li>
+          </ol>
+        </section>
 
         <section className="grid" aria-label="実装状況">
           <div className="panel">
-            <span className="tag">M1</span>
-            <div className="metric">取込・照合</div>
+            <span className="tag">STEP 1</span>
+            <div className="metric">Excel取込</div>
             <p className="muted">現場のExcelを読み込み、出荷ごとに内容を確認します。</p>
           </div>
           <div className="panel">
-            <span className="tag">M2</span>
-            <div className="metric">スマホ入力</div>
+            <span className="tag">STEP 2</span>
+            <div className="metric">現場入力</div>
             <p className="muted">梱包数、資材、追加作業、箱内訳、例外を記録します。</p>
           </div>
           <div className="panel">
-            <span className="tag">安全策</span>
-            <div className="metric">二重防止</div>
-            <p className="muted">同じ入力を再送しても、請求候補を二重に作らない設計です。</p>
+            <span className="tag">STEP 3</span>
+            <div className="metric">請求確認</div>
+            <p className="muted">単価・税・合計と明細を確認し、担当者が確認結果を残します。</p>
           </div>
         </section>
 
-        <section className="two-column" style={{ marginTop: 24 }}>
-          <div className="panel">
-            <h2>今回の縦切り実装</h2>
-            <ol className="steps">
-              <li>出荷番号を選び、現場の梱包実績をスマホで入力</li>
-              <li>単価ルールを適用し、税・小計・合計を計算</li>
-              <li>計算根拠付きの請求候補を確認</li>
-              <li>本番では担当者が確認してから次モジュールへ渡す</li>
-            </ol>
-          </div>
-          <div className="panel">
-            <h2>本番接続について</h2>
-            <p className="notice">
-              開発環境でデモ保存を使うには、環境変数 <code>DEMO_MODE=true</code> を設定します。本番ではSupabase Auth・RLS・Storageを必須にします。
-            </p>
-          </div>
+        <section className="panel" style={{ marginTop: 24 }}>
+          <h2>このデモで確認できること</h2>
+          <ol className="steps">
+            <li>出荷番号を選び、現場の梱包実績をスマホで入力</li>
+            <li>単価ルールを適用し、税・小計・合計を計算</li>
+            <li>計算根拠付きの請求候補を確認</li>
+            <li>担当者が内容を確認し、確認結果を残す</li>
+          </ol>
         </section>
       </main>
-      <footer className="footer">CSロジネット M1/M2 初期実装</footer>
+      <footer className="footer">CSロジネット 倉庫業務デモ</footer>
     </div>
   );
 }

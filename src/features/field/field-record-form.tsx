@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { BillingCalculation, FieldWorkInput } from "@/src/domain/types";
+import { demoFieldWorkInput } from "@/src/domain/demo-fixtures";
 import { fieldWorkInputSchema } from "@/src/domain/validation";
 
 function localDate(): string {
@@ -129,6 +130,29 @@ export function FieldRecordForm({ scope }: { scope: FieldScope | null }) {
     updateRecord("boxDetails", [{ ...current, ...patch }]);
   }
 
+  function loadDemoInput() {
+    const selectedShipment = visibleShipments.find((shipment) => shipment.shipmentNo === record.shipmentNo);
+    setRecord({
+      ...demoFieldWorkInput,
+      clientId: scope?.clientId ?? demoFieldWorkInput.clientId,
+      siteId: scope?.siteId ?? demoFieldWorkInput.siteId,
+      ...(selectedShipment ? {
+        shipmentNo: selectedShipment.shipmentNo,
+        workDate: selectedShipment.workDate,
+        packCount: selectedShipment.packCount,
+      } : {}),
+      materialLines: demoFieldWorkInput.materialLines.map((line) => ({ ...line })),
+      additionalWorkLines: demoFieldWorkInput.additionalWorkLines.map((line) => ({ ...line })),
+      boxDetails: demoFieldWorkInput.boxDetails.map((box) => ({
+        ...box,
+        items: box.items.map((item) => ({ ...item })),
+        materialLines: box.materialLines.map((line) => ({ ...line })),
+      })),
+    });
+    setPreview(null);
+    setMessage({ kind: "success", text: "デモ用の入力例を入れました。内容を確認して保存できます。" });
+  }
+
   async function previewBilling() {
     const parsed = fieldWorkInputSchema.safeParse(record);
     if (!parsed.success) {
@@ -212,6 +236,7 @@ export function FieldRecordForm({ scope }: { scope: FieldScope | null }) {
         </fieldset>
 
         <div className="actions">
+          {canPreview && <button className="button secondary" type="button" onClick={loadDemoInput} disabled={busy}>入力例を入れる</button>}
           {canPreview && <button className="button" type="button" onClick={previewBilling} disabled={busy}>請求候補を計算</button>}
           <button className="button secondary" type="button" onClick={saveRecord} disabled={busy}>入力を保存</button>
         </div>
