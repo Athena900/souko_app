@@ -15,6 +15,7 @@ export interface BillingCandidateReview {
   status: BillingCandidateReviewStatus;
   reviewedAt?: string;
   reviewNote?: string;
+  createdAt?: string;
   demo: boolean;
   persisted: boolean;
 }
@@ -52,12 +53,25 @@ export function calculateDemoBillingCandidate(
     workDate: record.workDate,
     calculation,
     status: calculation.warnings.length > 0 ? "review_required" : "ready",
+    createdAt: new Date().toISOString(),
     demo: true,
     persisted: true,
   };
   demoCandidates.set(id, candidate);
   demoCandidateByRecord.set(fieldWorkRecordId, id);
   return structuredClone(candidate);
+}
+
+export function listDemoBillingCandidates(filters: { clientId: string; siteId: string }): Array<Required<Pick<BillingCandidateReview, "fieldWorkRecordId" | "status" | "createdAt">> & Pick<BillingCandidateReview, "clientId" | "siteId">> {
+  return [...demoCandidates.values()]
+    .filter((candidate) => candidate.clientId === filters.clientId && candidate.siteId === filters.siteId)
+    .map((candidate) => ({
+      clientId: candidate.clientId,
+      siteId: candidate.siteId,
+      fieldWorkRecordId: candidate.fieldWorkRecordId,
+      status: candidate.status,
+      createdAt: candidate.createdAt ?? "",
+    }));
 }
 
 export function reviewDemoBillingCandidate(

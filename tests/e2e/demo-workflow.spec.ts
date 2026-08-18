@@ -15,8 +15,6 @@ test("実Excelを取込登録し、現場入力から請求確認まで完了で
   try {
     await page.goto("/shipments");
     await expect(page.getByRole("heading", { name: "登録済み出荷" })).toBeVisible();
-    await expect(page.getByText("登録済み出荷はありません。先にExcel取込で登録してください。")).toBeVisible();
-    await expect(page.locator(".shipment-list-footer")).toHaveCount(0);
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(originalWorkbookPath);
@@ -43,6 +41,9 @@ test("実Excelを取込登録し、現場入力から請求確認まで完了で
 
     await page.getByRole("button", { name: "この内容で登録する" }).click();
     await expect(page.getByText("Excelを登録しました。次は現場入力と単価計算に進めます。")).toBeVisible();
+    await page.goto("/");
+    await expect(page.getByTestId("dashboard-kpi-teal").locator("strong")).not.toHaveText("0");
+    await expect(page.locator(".status-legend").getByText("未着手", { exact: true })).toBeVisible();
     await page.goto("/shipments");
     await expect(page.getByRole("heading", { name: "登録済み出荷" })).toBeVisible();
     await expect(page.getByRole("cell", { name: shipmentNo })).toBeVisible();

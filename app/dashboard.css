@@ -150,23 +150,6 @@
 .dashboard-welcome-copy p { margin: 0 0 8px; color: #314b67; font-size: .85rem; }
 .dashboard-welcome-copy h2 { margin: 0 0 11px; color: #122d4c; font-size: 1.73rem; letter-spacing: -.025em; }
 .dashboard-welcome-copy small { color: #52657a; font-size: .75rem; }
-.dashboard-empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  margin-top: 14px;
-  padding: 28px;
-}
-.dashboard-empty-state h2 { margin: 5px 0 7px; font-size: 1.35rem; }
-.dashboard-empty-state p { max-width: 650px; margin: 0; color: #52657a; font-size: .86rem; }
-.dashboard-cleanup-grid { grid-template-columns: 1fr .78fr; }
-.dashboard-guide-panel { padding-bottom: 17px; }
-.dashboard-flow-list { display: grid; gap: 13px; margin: 0; padding: 3px 23px 4px 53px; }
-.dashboard-flow-list li { padding-left: 2px; color: #29445f; }
-.dashboard-flow-list strong, .dashboard-flow-list span { display: block; }
-.dashboard-flow-list strong { font-size: .84rem; }
-.dashboard-flow-list span { margin-top: 2px; color: #647488; font-size: .74rem; }
 .dashboard-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; }
 .dashboard-kpi {
   display: grid;
@@ -198,6 +181,7 @@
 .dashboard-kpi-action { grid-column: 1 / -1; display: block; border-top: 1px solid #e5e9ea; padding: 8px 15px; color: #07919a; font-size: .74rem; font-weight: 800; text-align: center; text-decoration: none; }
 .dashboard-kpi-action:hover { background: #f0fbfb; }
 .kpi-teal .dashboard-kpi-icon { background: #dff7f6; color: #07999e; }
+.kpi-aqua .dashboard-kpi-icon { background: #e0f8f8; color: #198f96; }
 .kpi-yellow .dashboard-kpi-icon { background: #fff1d4; color: #f0ad1c; }
 .kpi-blue .dashboard-kpi-icon { background: #dff0fb; color: #2788b7; }
 .kpi-red .dashboard-kpi-icon { background: #ffe2dd; color: #e8594d; }
@@ -250,6 +234,7 @@
 .alert-warning .alert-label { border: 1px solid #f4d38d; color: #e19c11; background: #fffaf0; }
 .alert-info .alert-symbol, .alert-info .alert-count { color: #2f9ab4; }
 .alert-info .alert-label { border: 1px solid #add8e5; color: #2f8daa; background: #f2fbfe; }
+.dashboard-no-alerts { min-height: 44px; border: 1px solid #d9ebe8; border-radius: 7px; padding: 12px; background: #f7fcfb; color: #21776f; font-size: .78rem; }
 
 .dashboard-bottom-grid { display: grid; grid-template-columns: 1.38fr .72fr; gap: 14px; margin-top: 14px; }
 .recent-panel { overflow: hidden; }
@@ -258,6 +243,7 @@
 .recent-table th, .recent-table td { padding: 9px 8px; }
 .recent-table th { background: #f7f9fa; color: #2d4661; font-size: .68rem; }
 .recent-table td { color: #344b63; }
+.dashboard-empty-row { padding: 22px 8px !important; color: #647488 !important; text-align: center !important; }
 .recent-status { display: inline-flex; border: 1px solid currentColor; border-radius: 4px; padding: 2px 7px; font-size: .66rem; font-weight: 800; white-space: nowrap; }
 .recent-status.done { color: #0b9a9d; background: #f1fbfb; }
 .recent-status.progress { color: #e49e13; background: #fffaf0; }
@@ -303,8 +289,6 @@
   .dashboard-tools { width: 100%; justify-content: space-between; }
   .dashboard-search { flex: 1 1 auto; width: auto; }
   .dashboard-welcome-panel { grid-template-columns: 1fr; padding: 17px; }
-  .dashboard-empty-state { align-items: flex-start; flex-direction: column; padding: 20px 17px; }
-  .dashboard-cleanup-grid { grid-template-columns: 1fr; }
   .dashboard-welcome-copy { padding: 0 0 3px; }
   .dashboard-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .dashboard-middle-grid, .dashboard-bottom-grid { grid-template-columns: 1fr; }
@@ -320,8 +304,6 @@
   .dashboard-user { font-size: .74rem; }
   .dashboard-search { min-width: 0; font-size: .72rem; }
   .dashboard-welcome-copy h2 { font-size: 1.35rem; }
-  .dashboard-empty-state h2 { font-size: 1.18rem; }
-  .dashboard-empty-state .button { width: 100%; }
   .dashboard-kpi { min-height: 125px; }
   .dashboard-kpi-copy { padding: 15px 5px 4px 6px; }
   .dashboard-kpi-icon { width: 33px; height: 33px; margin: 14px 0 0 7px; font-size: .95rem; }
