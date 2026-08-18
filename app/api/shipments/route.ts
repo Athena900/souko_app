@@ -15,7 +15,9 @@ import {
 export const runtime = "nodejs";
 
 const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 100;
+// 1回のExcel取込で167件ある実データを、現場画面で選択できるようにする。
+// 大量運用では検索・ページングを追加するが、初期版では500件までを扱う。
+const MAX_LIMIT = 500;
 const MAX_SEARCH_LENGTH = 80;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 

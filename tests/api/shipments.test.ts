@@ -64,7 +64,7 @@ describe("GET /api/shipments", () => {
   });
 
   it("rejects an invalid limit and date before reading data", async () => {
-    const invalidLimit = await GET(new Request("http://localhost/api/shipments?limit=101"));
+    const invalidLimit = await GET(new Request("http://localhost/api/shipments?limit=501"));
     expect(invalidLimit.status).toBe(400);
     const invalidDate = await GET(new Request("http://localhost/api/shipments?workDate=2026/08/01"));
     expect(invalidDate.status).toBe(400);

@@ -73,7 +73,7 @@ function numericValue(value: string, fallback = 0): number {
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : fallback;
 }
 
-export function FieldRecordForm({ scope, demoMode = false }: { scope: FieldScope | null; demoMode?: boolean }) {
+export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShipment = false, writeDisabled = false, writeDisabledReason }: { scope: FieldScope | null; demoMode?: boolean; requiresRegisteredShipment?: boolean; writeDisabled?: boolean; writeDisabledReason?: string | null }) {
   const [record, setRecord] = useState<FieldWorkInput>(() => makeInitialRecord(scope));
   const [activeBoxIndex, setActiveBoxIndex] = useState(0);
   const [shipments, setShipments] = useState<ShipmentOption[]>([]);
@@ -88,6 +88,7 @@ export function FieldRecordForm({ scope, demoMode = false }: { scope: FieldScope
   const shipmentsLoading = Boolean(scopeKey && shipmentLoadState.scopeKey !== scopeKey);
   const shipmentsError = shipmentLoadState.scopeKey === scopeKey ? shipmentLoadState.error : null;
   const visibleShipments = shipmentLoadState.scopeKey === scopeKey ? shipments : [];
+  const hasSelectedRegisteredShipment = visibleShipments.some((shipment) => shipment.shipmentNo === record.shipmentNo);
   const activeBox = record.boxDetails[activeBoxIndex];
   const totalMaterialQuantity = useMemo(
     () => record.materialLines.reduce((sum, line) => sum + line.quantity, 0),
@@ -104,7 +105,7 @@ export function FieldRecordForm({ scope, demoMode = false }: { scope: FieldScope
     const controller = new AbortController();
     let active = true;
     const requestScopeKey = scopeKey;
-    const query = new URLSearchParams({ clientId, siteId, limit: "100" });
+    const query = new URLSearchParams({ clientId, siteId, limit: "500" });
     fetch(`/api/shipments?${query.toString()}`, { signal: controller.signal })
       .then(async (response) => {
         const body = (await response.json()) as { shipments?: ShipmentOption[]; error?: string };
@@ -317,14 +318,14 @@ export function FieldRecordForm({ scope, demoMode = false }: { scope: FieldScope
         <div className="shipment-card">
           <div className="field full">
             <label htmlFor="registeredShipment">登録済みの出荷から選ぶ</label>
-            <select id="registeredShipment" value={visibleShipments.some((shipment) => shipment.shipmentNo === record.shipmentNo) ? record.shipmentNo : ""} onChange={(event) => selectRegisteredShipment(event.target.value)} disabled={shipmentsLoading}>
-              <option value="">出荷番号を手入力する</option>
+            <select id="registeredShipment" value={hasSelectedRegisteredShipment ? record.shipmentNo : ""} onChange={(event) => selectRegisteredShipment(event.target.value)} disabled={shipmentsLoading}>
+              <option value="">{requiresRegisteredShipment ? "出荷番号を選択してください" : "出荷番号を手入力する"}</option>
               {visibleShipments.map((shipment) => <option key={shipment.id} value={shipment.shipmentNo}>{shipment.shipmentNo}（{shipment.workDate}・箱{shipment.packCount}）</option>)}
             </select>
-            {shipmentsLoading ? <p className="muted compact-note">登録済み出荷を読み込み中…</p> : shipmentsError ? <p className="notice compact-note">登録済み出荷を読み込めませんでした。出荷番号を手入力してください。</p> : visibleShipments.length === 0 ? <p className="muted compact-note">登録済み出荷はありません。出荷番号を手入力できます。</p> : <p className="muted compact-note">選択すると作業日と登録済み箱数が反映されます。</p>}
+            {shipmentsLoading ? <p className="muted compact-note">登録済み出荷を読み込み中…</p> : shipmentsError ? <p className="notice compact-note">登録済み出荷を読み込めませんでした。</p> : visibleShipments.length === 0 ? <p className="muted compact-note">登録済み出荷はありません。先にExcel取込で登録してください。</p> : <p className="muted compact-note">選択すると作業日と登録済み箱数が反映されます。</p>}
           </div>
           <div className="form-grid">
-            <div className="field"><label htmlFor="shipmentNo">出荷番号</label><input id="shipmentNo" value={record.shipmentNo} onChange={(event) => updateRecord("shipmentNo", event.target.value)} placeholder="例：SHP-20260806-001" /></div>
+            <div className="field"><label htmlFor="shipmentNo">出荷番号</label><input id="shipmentNo" value={record.shipmentNo} onChange={(event) => updateRecord("shipmentNo", event.target.value)} placeholder="例：SHP-20260806-001" disabled={requiresRegisteredShipment} />{requiresRegisteredShipment && <span className="field-help">Excel登録後に上の一覧から選択します</span>}</div>
             <div className="field"><label htmlFor="workDate">作業日</label><input id="workDate" type="date" value={record.workDate} onChange={(event) => updateRecord("workDate", event.target.value)} /></div>
             <div className="field"><label htmlFor="packCount">箱数</label><input id="packCount" type="number" min="0" inputMode="numeric" value={record.packCount} onChange={(event) => updateRecord("packCount", numericValue(event.target.value))} /></div>
             <div className="field"><label htmlFor="materialQuantity">緩衝材の個数</label><div className="stepper"><button type="button" aria-label="緩衝材を1個減らす" disabled={record.boxDetails.length > 0} onClick={() => updateMaterialQuantity(Math.max(0, totalMaterialQuantity - 1))}>−</button><input id="materialQuantity" type="number" min="0" inputMode="numeric" value={totalMaterialQuantity} readOnly={record.boxDetails.length > 0} onChange={(event) => updateMaterialQuantity(numericValue(event.target.value))} /><button type="button" aria-label="緩衝材を1個増やす" disabled={record.boxDetails.length > 0} onClick={() => updateMaterialQuantity(totalMaterialQuantity + 1)}>＋</button></div>{record.boxDetails.length > 0 && <span className="field-help">箱ごとの入力合計を表示しています</span>}</div>
@@ -362,10 +363,11 @@ export function FieldRecordForm({ scope, demoMode = false }: { scope: FieldScope
         </fieldset>
 
         <div className="actions field-actions">
-          {canPreview && <button className="button secondary" type="button" onClick={loadDemoInput} disabled={busy}>入力例を入れる</button>}
-          {canPreview && <button className="button" type="button" onClick={previewBilling} disabled={busy}>請求候補を計算</button>}
-          <button className="button primary-action" type="button" aria-label="入力を保存" onClick={saveRecord} disabled={busy}>{busy ? "保存中…" : "✓ 作業完了（入力を保存）"}</button>
+          {canPreview && <button className="button secondary" type="button" onClick={loadDemoInput} disabled={busy || (requiresRegisteredShipment && !hasSelectedRegisteredShipment)}>入力例を入れる</button>}
+          {canPreview && <button className="button" type="button" onClick={previewBilling} disabled={busy || (requiresRegisteredShipment && !hasSelectedRegisteredShipment)}>請求候補を計算</button>}
+          <button className="button primary-action" type="button" aria-label="入力を保存" onClick={saveRecord} disabled={busy || writeDisabled}>{busy ? "保存中…" : writeDisabled ? "保存できません" : "✓ 作業完了（入力を保存）"}</button>
         </div>
+        {writeDisabled && <div className="status warning" role="status">{writeDisabledReason}</div>}
         {message && <div className={`status ${message.kind === "error" ? "error" : message.kind === "warning" ? "warning" : ""}`} role="status">{message.text}</div>}
       </section>
 
