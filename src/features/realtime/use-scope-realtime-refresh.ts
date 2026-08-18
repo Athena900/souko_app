@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { hasSupabasePublicEnv } from "@/src/lib/env";
-import { createSupabaseBrowserClient } from "@/src/lib/supabase/browser";
+import { getSupabaseBrowserClient } from "@/src/lib/supabase/browser";
 
 export interface RealtimeScope {
   clientId: string;
@@ -34,12 +33,12 @@ export function useScopeRealtimeRefresh({ scope, tables, onRefresh, enabled = tr
   }, [onRefresh]);
 
   useEffect(() => {
-    if (!enabled || !clientId || !siteId || !hasSupabasePublicEnv() || !tableKey) return;
+    if (!enabled || !clientId || !siteId || !tableKey) return;
 
     let disposed = false;
     let subscribed = false;
-    const client = createSupabaseBrowserClient();
-    const channel = client.channel(`warehouse:${clientId}:${siteId}:${tableKey}`);
+    let client: Awaited<ReturnType<typeof getSupabaseBrowserClient>> | null = null;
+    let channel: ReturnType<Awaited<ReturnType<typeof getSupabaseBrowserClient>>["channel"]> | null = null;
     const refresh = () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
       refreshTimerRef.current = setTimeout(() => {
@@ -49,16 +48,20 @@ export function useScopeRealtimeRefresh({ scope, tables, onRefresh, enabled = tr
     };
     const filter = `client_id=eq.${clientId},site_id=eq.${siteId}`;
 
-    for (const table of tableKey.split(",") as RealtimeTable[]) {
-      channel.on("postgres_changes", { event: "*", schema: "public", table, filter }, refresh);
-    }
-
-    channel.subscribe((status) => {
+    void getSupabaseBrowserClient().then((connectedClient) => {
       if (disposed) return;
-      if (status === "SUBSCRIBED") {
-        if (subscribed) refresh();
-        subscribed = true;
+      client = connectedClient;
+      channel = client.channel(`warehouse:${clientId}:${siteId}:${tableKey}`);
+      for (const table of tableKey.split(",") as RealtimeTable[]) {
+        channel.on("postgres_changes", { event: "*", schema: "public", table, filter }, refresh);
       }
+      channel.subscribe((status) => {
+        if (disposed) return;
+        if (status === "SUBSCRIBED") {
+          if (subscribed) refresh();
+          subscribed = true;
+        }
+      });
     });
 
     return () => {
@@ -67,7 +70,7 @@ export function useScopeRealtimeRefresh({ scope, tables, onRefresh, enabled = tr
         clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = null;
       }
-      void client.removeChannel(channel);
+      if (client && channel) void client.removeChannel(channel);
     };
   }, [clientId, enabled, siteId, tableKey]);
 }

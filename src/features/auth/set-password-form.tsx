@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/src/lib/supabase/browser";
+import { getSupabaseBrowserClient } from "@/src/lib/supabase/browser";
 
 export function SetPasswordForm() {
   const [password, setPassword] = useState("");
@@ -14,7 +14,7 @@ export function SetPasswordForm() {
   useEffect(() => {
     let active = true;
     Promise.resolve().then(async () => {
-      const supabase = createSupabaseBrowserClient();
+      const supabase = await getSupabaseBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!active) return;
       if (!session) setError("招待リンクの有効期限が切れているか、すでに使用されています。管理者へ再招待を依頼してください。");
@@ -44,7 +44,7 @@ export function SetPasswordForm() {
     setBusy(true);
     setError("");
     try {
-      const supabase = createSupabaseBrowserClient();
+      const supabase = await getSupabaseBrowserClient();
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
       window.location.replace("/");

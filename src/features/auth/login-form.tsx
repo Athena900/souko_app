@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { createSupabaseBrowserClient } from "@/src/lib/supabase/browser";
+import { getSupabaseBrowserClient } from "@/src/lib/supabase/browser";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -16,7 +16,7 @@ export function LoginForm() {
     setError("");
 
     try {
-      const supabase = createSupabaseBrowserClient();
+      const supabase = await getSupabaseBrowserClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) throw signInError;
       const requestedPath = typeof window === "undefined" ? "/" : new URLSearchParams(window.location.search).get("next") ?? "/";
