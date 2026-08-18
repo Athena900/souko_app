@@ -14,6 +14,7 @@ import {
 } from "@/src/server/auth/access";
 import {
   BillingCandidateNotFoundError,
+  BillingCandidateConflictError,
   BillingCandidatePermissionError,
   BillingCandidateReviewError,
   reviewSupabaseBillingCandidate,
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
           parsed.data.siteId,
           parsed.data.status,
           parsed.data.note,
+          parsed.data.expectedUpdatedAt,
         )
       : (
           await requireMembership(parsed.data.clientId, parsed.data.siteId, ["office", "manager", "admin"]),
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
             parsed.data.candidateId,
             parsed.data.status,
             parsed.data.note,
+            parsed.data.expectedUpdatedAt,
           )
         );
     return NextResponse.json(result, { status: 200 });
@@ -80,6 +83,7 @@ export async function POST(request: Request) {
     if (error instanceof BillingCandidatePermissionError) return NextResponse.json({ error: error.message }, { status: 403 });
     if (error instanceof RouteConfigurationError || error instanceof PersistenceError) return NextResponse.json({ error: error.message }, { status: 503 });
     if (error instanceof BillingCandidateNotFoundError) return NextResponse.json({ error: error.message }, { status: 404 });
+    if (error instanceof BillingCandidateConflictError) return NextResponse.json({ error: error.message }, { status: 409 });
     if (error instanceof BillingCandidateReviewError) return NextResponse.json({ error: error.message }, { status: 422 });
     return NextResponse.json({ error: "確認結果を保存できませんでした" }, { status: 500 });
   }

@@ -133,6 +133,15 @@ export const billingCandidateReviewRequestSchema = z
     candidateId: id,
     status: z.enum(["approved", "rejected"]),
     note: z.string().trim().max(2_000).optional(),
+    expectedUpdatedAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+
+export const billingCandidateLookupQuerySchema = z
+  .object({
+    clientId: id,
+    siteId: id,
+    candidateId: id,
   })
   .strict();
 
@@ -174,6 +183,7 @@ export const billingCandidateResponseSchema = z
     status: z.enum(["ready", "review_required", "approved", "rejected"]),
     reviewedAt: z.string().max(100).optional(),
     reviewNote: z.string().max(2_000).optional(),
+    updatedAt: z.string().datetime({ offset: true }).optional(),
     demo: z.boolean(),
     persisted: z.boolean(),
   })

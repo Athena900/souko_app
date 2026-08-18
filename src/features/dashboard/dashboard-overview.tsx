@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { DashboardShipmentState, DashboardSummary } from "@/src/server/dashboard/dashboard-summary";
+import { useScopeRealtimeRefresh } from "@/src/features/realtime/use-scope-realtime-refresh";
 
 const shortcuts = [
   ["出荷管理", "▰", "/shipments"],
@@ -37,6 +38,8 @@ const emptySummary: DashboardSummary = {
   recentShipments: [],
 };
 
+const dashboardRealtimeTables = ["shipments", "field_work_records", "billing_candidates", "billing_candidate_reviews"] as const;
+
 function formatToday(): string {
   return new Intl.DateTimeFormat("ja-JP", {
     year: "numeric",
@@ -64,25 +67,39 @@ function chartBackground(summary: DashboardSummary): string {
   return `conic-gradient(${segments.join(", ")})`;
 }
 
-export function DashboardOverview() {
+export function DashboardOverview({ scope }: { scope: { clientId: string; siteId: string } | null }) {
   const [summary, setSummary] = useState<DashboardSummary>(emptySummary);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    try {
+      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      const body = await response.json() as { summary?: DashboardSummary; error?: string };
+      if (!response.ok || !body.summary) throw new Error(body.error ?? "ダッシュボードを読み込めませんでした");
+      setSummary(body.summary);
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "ダッシュボードを読み込めませんでした");
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        const response = await fetch("/api/dashboard", { cache: "no-store" });
+    void fetch("/api/dashboard", { cache: "no-store" })
+      .then(async (response) => {
         const body = await response.json() as { summary?: DashboardSummary; error?: string };
         if (!response.ok || !body.summary) throw new Error(body.error ?? "ダッシュボードを読み込めませんでした");
-        if (!cancelled) setSummary(body.summary);
-      } catch (error) {
+        return body.summary;
+      })
+      .then((nextSummary) => {
+        if (!cancelled) setSummary(nextSummary);
+      })
+      .catch((error: unknown) => {
         if (!cancelled) setLoadError(error instanceof Error ? error.message : "ダッシュボードを読み込めませんでした");
-      }
-    }
-    void load();
+      });
     return () => { cancelled = true; };
   }, []);
+  useScopeRealtimeRefresh({ scope, tables: dashboardRealtimeTables, onRefresh: load });
 
   const hasData = summary.totalShipments > 0;
   const alerts = [

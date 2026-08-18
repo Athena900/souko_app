@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { calculateDemoBillingCandidate, BillingCandidateNotFoundError, BillingCandidatePermissionError, BillingCandidateRuleError, persistSupabaseBillingCandidate } from "@/src/server/repositories/billing-candidate-repository";
-import { billingCandidateRequestSchema } from "@/src/domain/validation";
+import { calculateDemoBillingCandidate, getDemoBillingCandidate, getSupabaseBillingCandidate, BillingCandidateNotFoundError, BillingCandidatePermissionError, BillingCandidateRuleError, persistSupabaseBillingCandidate } from "@/src/server/repositories/billing-candidate-repository";
+import { billingCandidateLookupQuerySchema, billingCandidateRequestSchema } from "@/src/domain/validation";
 import { demoPriceRules } from "@/src/domain/demo-fixtures";
 import { hasSupabasePublicEnv, usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
 import {
@@ -22,6 +22,34 @@ import {
 import { assertTrialWriteAllowed, TrialWriteDisabledError } from "@/src/server/trial/trial-write-guard";
 
 export const runtime = "nodejs";
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const parsed = billingCandidateLookupQuerySchema.safeParse({
+    clientId: searchParams.get("clientId"),
+    siteId: searchParams.get("siteId"),
+    candidateId: searchParams.get("candidateId"),
+  });
+  if (!parsed.success) return NextResponse.json({ error: "請求候補の指定を確認してください" }, { status: 400 });
+
+  const useMemoryStorage = usesDemoMemoryStorage();
+  if (usesSupabaseStorage() && !hasSupabasePublicEnv()) return NextResponse.json({ error: "Supabaseの設定が必要です" }, { status: 503 });
+
+  try {
+    const { clientId, siteId, candidateId } = parsed.data;
+    if (!useMemoryStorage) await requireMembership(clientId, siteId, ["office", "manager", "admin"]);
+    const candidate = useMemoryStorage
+      ? getDemoBillingCandidate(candidateId, clientId, siteId)
+      : await getSupabaseBillingCandidate(clientId, siteId, candidateId);
+    if (!candidate) return NextResponse.json({ error: "請求候補が見つかりません" }, { status: 404 });
+    return NextResponse.json(candidate, { status: 200 });
+  } catch (error) {
+    if (error instanceof RouteUnauthorizedError) return NextResponse.json({ error: error.message }, { status: 401 });
+    if (error instanceof RouteForbiddenError || error instanceof BillingCandidatePermissionError) return NextResponse.json({ error: error.message }, { status: 403 });
+    if (error instanceof RouteConfigurationError || error instanceof PersistenceError) return NextResponse.json({ error: error.message }, { status: 503 });
+    return NextResponse.json({ error: "請求候補を読み込めませんでした" }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {

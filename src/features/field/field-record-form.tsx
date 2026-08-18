@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BillingCalculation, BoxDetail, BoxItem, FieldWorkInput, MaterialLine } from "@/src/domain/types";
 import { demoFieldWorkInput } from "@/src/domain/demo-fixtures";
 import { fieldWorkInputSchema } from "@/src/domain/validation";
+import { useScopeRealtimeRefresh } from "@/src/features/realtime/use-scope-realtime-refresh";
+
+const fieldRealtimeTables = ["shipments", "field_work_records"] as const;
 
 function localDate(): string {
   const now = new Date();
@@ -81,6 +84,9 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
   const [preview, setPreview] = useState<BillingCalculation | null>(null);
   const [message, setMessage] = useState<{ kind: "success" | "error" | "warning"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [remoteChangeDetected, setRemoteChangeDetected] = useState(false);
+  const [shipmentRefreshVersion, setShipmentRefreshVersion] = useState(0);
   const canPreview = demoMode;
   const clientId = scope?.clientId;
   const siteId = scope?.siteId;
@@ -132,10 +138,25 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
       active = false;
       controller.abort();
     };
-  }, [clientId, siteId, scopeKey]);
+  }, [clientId, siteId, scopeKey, shipmentRefreshVersion]);
+
+  const refreshForRealtime = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setRemoteChangeDetected(true);
+      return;
+    }
+    setShipmentRefreshVersion((current) => current + 1);
+  }, [hasUnsavedChanges]);
+  useScopeRealtimeRefresh({ scope, tables: fieldRealtimeTables, onRefresh: refreshForRealtime });
+
+  function markChanged() {
+    setHasUnsavedChanges(true);
+    setRemoteChangeDetected(false);
+  }
 
   function updateRecord<K extends keyof FieldWorkInput>(key: K, value: FieldWorkInput[K]) {
     setRecord((current) => ({ ...current, [key]: value }));
+    markChanged();
     setMessage(null);
     setPreview(null);
   }
@@ -160,6 +181,7 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
       workDate: shipment.workDate,
       packCount: shipment.packCount,
     }));
+    markChanged();
     setMessage(null);
     setPreview(null);
   }
@@ -169,6 +191,7 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
       ...current,
       boxDetails: current.boxDetails.map((box, index) => index === boxIndex ? { ...box, ...patch } : box),
     }));
+    markChanged();
     setMessage(null);
     setPreview(null);
   }
@@ -176,6 +199,7 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
   function addBox() {
     setRecord((current) => ({ ...current, boxDetails: [...current.boxDetails, emptyBox(nextBoxNumber(current.boxDetails))] }));
     setActiveBoxIndex(record.boxDetails.length);
+    markChanged();
     setMessage(null);
   }
 
@@ -186,6 +210,7 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
       if (boxIndex === current) return Math.max(0, Math.min(current, record.boxDetails.length - 2));
       return current;
     });
+    markChanged();
     setMessage(null);
     setPreview(null);
   }
@@ -220,6 +245,7 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
       const total = nextBoxes.reduce((sum, box) => sum + (box.materialLines.find((line) => line.code === "bubble_wrap")?.quantity ?? 0), 0);
       return { ...current, boxDetails: nextBoxes, materialLines: [materialLine(total)] };
     });
+    markChanged();
     setMessage(null);
     setPreview(null);
   }
@@ -240,6 +266,7 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
       boxDetails: demoFieldWorkInput.boxDetails.map(cloneBox),
     });
     setActiveBoxIndex(0);
+    markChanged();
     setPreview(null);
     setMessage({ kind: "success", text: "デモ用の入力例を入れました。箱1・箱2の内容を確認して保存できます。" });
   }
@@ -285,6 +312,8 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
       });
       const body = (await response.json()) as { error?: string; demo?: boolean };
       if (!response.ok) throw new Error(body.error ?? "保存に失敗しました");
+      setHasUnsavedChanges(false);
+      setRemoteChangeDetected(false);
       setMessage({ kind: "success", text: body.demo ? "デモモードで保存しました" : "Supabaseへ保存しました" });
     } catch (error) {
       setMessage({ kind: "error", text: error instanceof Error ? error.message : "保存に失敗しました" });
@@ -310,6 +339,7 @@ export function FieldRecordForm({ scope, demoMode = false, requiresRegisteredShi
           <div><span>荷主</span><strong>{demoMode ? "リベティ様" : "対象荷主"}</strong></div>
           <div><span>作業日</span><strong>{record.workDate.replace(/-/g, "/")}</strong></div>
         </div>
+        {remoteChangeDetected && <div className="status warning" role="status">他の人の更新を検出しました。入力中の内容は消していません。<button className="text-button" type="button" onClick={() => { setRemoteChangeDetected(false); setShipmentRefreshVersion((current) => current + 1); }}>出荷一覧を最新にする</button></div>}
         <div className="section-heading field-form-heading">
           <div><span className="tag">現場入力</span><h2 id="field-form-title">箱ごとの作業を記録</h2></div>
           <span className="progress-chip">{record.boxDetails.length}箱入力済み</span>

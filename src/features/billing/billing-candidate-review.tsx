@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { BillingCandidateReviewStatus, BillingCalculation } from "@/src/domain/types";
+import { useScopeRealtimeRefresh } from "@/src/features/realtime/use-scope-realtime-refresh";
+
+const billingRealtimeTables = ["field_work_records", "billing_candidates", "billing_candidate_reviews"] as const;
 
 interface BillingScope {
   clientId: string;
@@ -27,6 +30,7 @@ interface BillingCandidate {
   status: BillingCandidateReviewStatus;
   reviewedAt?: string;
   reviewNote?: string;
+  updatedAt?: string;
   demo: boolean;
   persisted: boolean;
 }
@@ -60,13 +64,30 @@ export function BillingCandidateReview({ scope, writeDisabled = false, writeDisa
   const loadError = loadState.scopeKey === scopeKey ? loadState.error : null;
   const visibleRecords = loadState.scopeKey === scopeKey ? records : [];
 
+  const loadRecords = useCallback(async () => {
+    if (!clientId || !siteId) return;
+    const requestScopeKey = scopeKey;
+    const query = new URLSearchParams({ clientId, siteId, limit: "100" });
+    try {
+      const response = await fetch(`/api/field-records?${query.toString()}`);
+        const body = (await response.json()) as { records?: FieldWorkSummary[]; error?: string };
+        if (!response.ok) throw new Error(body.error ?? "現場記録を読み込めませんでした");
+      const nextRecords = body.records ?? [];
+      setRecords(nextRecords);
+      setLoadState({ scopeKey: requestScopeKey, error: null });
+      setSelectedRecordId((current) => (nextRecords.some((record) => record.id === current) ? current : nextRecords[0]?.id ?? ""));
+    } catch (error) {
+      setRecords([]);
+      setLoadState({ scopeKey: requestScopeKey, error: error instanceof Error ? error.message : "現場記録を読み込めませんでした" });
+    }
+  }, [clientId, siteId, scopeKey]);
+
   useEffect(() => {
     if (!clientId || !siteId) return;
-    const controller = new AbortController();
     let active = true;
     const requestScopeKey = scopeKey;
     const query = new URLSearchParams({ clientId, siteId, limit: "100" });
-    fetch(`/api/field-records?${query.toString()}`, { signal: controller.signal })
+    void fetch(`/api/field-records?${query.toString()}`)
       .then(async (response) => {
         const body = (await response.json()) as { records?: FieldWorkSummary[]; error?: string };
         if (!response.ok) throw new Error(body.error ?? "現場記録を読み込めませんでした");
@@ -79,16 +100,28 @@ export function BillingCandidateReview({ scope, writeDisabled = false, writeDisa
         setSelectedRecordId((current) => (nextRecords.some((record) => record.id === current) ? current : nextRecords[0]?.id ?? ""));
       })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
         if (!active) return;
         setRecords([]);
         setLoadState({ scopeKey: requestScopeKey, error: error instanceof Error ? error.message : "現場記録を読み込めませんでした" });
       });
-    return () => {
-      active = false;
-      controller.abort();
-    };
+    return () => { active = false; };
   }, [clientId, siteId, scopeKey]);
+
+  const refreshForRealtime = useCallback(async () => {
+    await loadRecords();
+    if (!candidate || !clientId || !siteId) return;
+    const query = new URLSearchParams({ clientId, siteId, candidateId: candidate.id });
+    const response = await fetch(`/api/billing-candidates?${query.toString()}`, { cache: "no-store" });
+    const body = (await response.json()) as BillingCandidate & { error?: string };
+    if (response.ok) {
+      setCandidate(body);
+      setReviewNote(body.reviewNote ?? "");
+      setMessage({ kind: "success", text: "他の利用者の更新を反映しました" });
+      return;
+    }
+    if (response.status === 404) setCandidate(null);
+  }, [candidate, clientId, loadRecords, siteId]);
+  useScopeRealtimeRefresh({ scope, tables: billingRealtimeTables, onRefresh: refreshForRealtime });
 
   if (!scope) {
     return (
@@ -133,15 +166,24 @@ export function BillingCandidateReview({ scope, writeDisabled = false, writeDisa
 
   async function reviewCandidate(status: "approved" | "rejected") {
     if (!candidate) return;
+    if (!candidate.updatedAt) {
+      setMessage({ kind: "error", text: "最新の請求候補を読み込めません。画面を更新してください" });
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
       const response = await fetch("/api/billing-candidates/review", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ clientId: activeScope.clientId, siteId: activeScope.siteId, candidateId: candidate.id, status, note: reviewNote || undefined }),
+        body: JSON.stringify({ clientId: activeScope.clientId, siteId: activeScope.siteId, candidateId: candidate.id, status, note: reviewNote || undefined, expectedUpdatedAt: candidate.updatedAt }),
       });
       const body = (await response.json()) as BillingCandidate & { error?: string };
+      if (response.status === 409) {
+        await refreshForRealtime();
+        setMessage({ kind: "warning", text: body.error ?? "他の利用者が先に確認しました。最新の状態を表示しました" });
+        return;
+      }
       if (!response.ok) throw new Error(body.error ?? "確認結果を保存できませんでした");
       setCandidate(body);
       setMessage({ kind: "success", text: status === "approved" ? "請求候補を確認済みにしました" : "請求候補を差し戻しました" });
@@ -153,7 +195,7 @@ export function BillingCandidateReview({ scope, writeDisabled = false, writeDisa
   }
 
   const selectedRecord = visibleRecords.find((record) => record.id === selectedRecordId);
-  const canReview = Boolean(candidate?.persisted && candidate.status !== "approved" && candidate.status !== "rejected");
+  const canReview = Boolean(candidate?.persisted && candidate.updatedAt && candidate.status !== "approved" && candidate.status !== "rejected");
 
   return (
     <div className="two-column">
@@ -167,7 +209,7 @@ export function BillingCandidateReview({ scope, writeDisabled = false, writeDisa
             {visibleRecords.map((record) => <option key={record.id} value={record.id}>{record.shipmentNo}（{record.workDate}・箱{record.packCount}）</option>)}
           </select>
         </div>
-        {loading ? <p className="muted">現場記録を読み込み中…</p> : loadError ? <p className="notice">{loadError}</p> : visibleRecords.length === 0 ? <p className="notice">現場記録がありません。先に現場入力を保存してください。</p> : selectedRecord ? <p className="muted">選択中：{selectedRecord.shipmentNo} / {selectedRecord.workDate}</p> : null}
+      {loading ? <p className="muted">現場記録を読み込み中…</p> : loadError ? <p className="notice">{loadError}</p> : visibleRecords.length === 0 ? <p className="notice">現場記録がありません。先に現場入力を保存してください。</p> : selectedRecord ? <p className="muted">選択中：{selectedRecord.shipmentNo} / {selectedRecord.workDate}</p> : null}
         <button className="button" type="button" onClick={calculateCandidate} disabled={busy || loading || !selectedRecordId || writeDisabled}>{candidate?.status === "approved" || candidate?.status === "rejected" ? "請求候補を再計算" : writeDisabled ? "計算を保存できません" : "請求候補を計算"}</button>
         {writeDisabled && <div className="status warning" role="status">{writeDisabledReason}</div>}
         {message && <div className={`status ${message.kind === "error" ? "error" : message.kind === "warning" ? "warning" : ""}`} role="status">{message.text}</div>}

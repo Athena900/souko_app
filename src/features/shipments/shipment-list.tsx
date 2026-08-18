@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useScopeRealtimeRefresh } from "@/src/features/realtime/use-scope-realtime-refresh";
 
 interface ShipmentScope {
   clientId: string;
@@ -15,6 +16,8 @@ interface ShipmentRow {
   packCount: number;
   status: "ready" | "exception" | "cancelled";
 }
+
+const shipmentRealtimeTables = ["shipments", "field_work_records", "billing_candidates", "billing_candidate_reviews"] as const;
 
 function statusLabel(status: ShipmentRow["status"]): string {
   if (status === "ready") return "入力待ち";
@@ -72,6 +75,12 @@ export function ShipmentList({ scope }: { scope: ShipmentScope | null }) {
       active = false;
     };
   }, [requestShipments]);
+
+  useScopeRealtimeRefresh({
+    scope,
+    tables: shipmentRealtimeTables,
+    onRefresh: loadShipments,
+  });
 
   if (!scope) {
     return (
