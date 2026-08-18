@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { AppFrame } from "@/src/features/layout/app-shell";
+import { requireTrialPageAccess } from "@/src/server/auth/trial-page-access";
 
-export default function HelpPage() {
+export const dynamic = "force-dynamic";
+
+export default async function HelpPage() {
+  await requireTrialPageAccess("/help");
   return (
     <AppFrame active="help">
       <div className="screen-page help-page">

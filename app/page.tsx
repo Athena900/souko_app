@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-banner";
 import { AppFrame } from "@/src/features/layout/app-shell";
 import { isDemoMode } from "@/src/lib/env";
+import { requireTrialPageAccess } from "@/src/server/auth/trial-page-access";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,8 @@ const shortcuts = [
   ["ヘルプ", "?", "/help"],
 ] as const;
 
-export default function HomePage() {
+export default async function HomePage() {
+  await requireTrialPageAccess("/");
   const userName = isDemoMode() ? "山田 太郎" : "担当者";
 
   return (
