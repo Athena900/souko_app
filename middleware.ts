@@ -28,7 +28,9 @@ export async function middleware(request: NextRequest) {
   let claims: unknown = null;
   try {
     const { data } = await supabase.auth.getClaims();
-    claims = data;
+    // getClaims() は未ログインでも空の data オブジェクトを返す。
+    // data 自体ではなく claims の有無で認証済みかを判定する。
+    claims = data?.claims ?? null;
   } catch {
     // 試用版では認証基盤に到達できない場合も、未ログインとして入口へ戻す。
   }
