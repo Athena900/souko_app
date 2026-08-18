@@ -10,6 +10,8 @@ export interface RealtimeScope {
 
 export type RealtimeTable = "shipments" | "field_work_records" | "billing_candidates" | "billing_candidate_reviews";
 
+const FALLBACK_REFRESH_MS = 30_000;
+
 interface UseScopeRealtimeRefreshOptions {
   scope: RealtimeScope | null;
   tables: readonly RealtimeTable[];
@@ -58,9 +60,16 @@ export function useScopeRealtimeRefresh({ scope, tables, onRefresh, enabled = tr
         subscribed = true;
       }
     });
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const fallbackRefreshTimer = window.setInterval(refreshWhenVisible, FALLBACK_REFRESH_MS);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       disposed = true;
+      window.clearInterval(fallbackRefreshTimer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
         refreshTimerRef.current = null;
