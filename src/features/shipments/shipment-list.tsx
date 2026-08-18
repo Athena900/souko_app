@@ -83,7 +83,7 @@ export function ShipmentList({ scope }: { scope: ShipmentScope | null }) {
   }
 
   return (
-    <section className="panel" aria-labelledby="shipment-list-title">
+    <section className="panel shipment-list-panel" aria-labelledby="shipment-list-title">
       <span className="eyebrow">出荷管理</span>
       <h1 id="shipment-list-title">登録済み出荷</h1>
       <p className="lede">Excelで登録した出荷を確認し、現場入力へ進みます。</p>
@@ -114,7 +114,7 @@ export function ShipmentList({ scope }: { scope: ShipmentScope | null }) {
           </table>
         </div>
       )}
-      <div className="actions"><Link className="button secondary" href="/field">現場入力へ</Link></div>
+      {shipments.length > 0 && <div className="actions shipment-list-footer"><Link className="button secondary" href="/field">現場入力へ</Link></div>}
     </section>
   );
 }

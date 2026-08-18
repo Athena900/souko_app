@@ -13,6 +13,11 @@ test("実Excelを取込登録し、現場入力から請求確認まで完了で
   const shipmentNo = `${runId}-DR01010018697`;
 
   try {
+    await page.goto("/shipments");
+    await expect(page.getByRole("heading", { name: "登録済み出荷" })).toBeVisible();
+    await expect(page.getByText("登録済み出荷はありません。先にExcel取込で登録してください。")).toBeVisible();
+    await expect(page.locator(".shipment-list-footer")).toHaveCount(0);
+
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(originalWorkbookPath);
     const worksheet = workbook.getWorksheet("出荷指示貼り付け");
@@ -41,6 +46,9 @@ test("実Excelを取込登録し、現場入力から請求確認まで完了で
     await page.goto("/shipments");
     await expect(page.getByRole("heading", { name: "登録済み出荷" })).toBeVisible();
     await expect(page.getByRole("cell", { name: shipmentNo })).toBeVisible();
+    await expect(page.locator(".shipment-list-footer").getByRole("link", { name: "現場入力へ", exact: true })).toBeVisible();
+    const shipmentHeadingFontSize = await page.getByRole("heading", { name: "登録済み出荷" }).evaluate((heading) => Number.parseFloat(getComputedStyle(heading).fontSize));
+    expect(shipmentHeadingFontSize).toBeLessThan(30);
     await page.goto("/field");
     await expect(page).toHaveURL(/\/field$/);
 

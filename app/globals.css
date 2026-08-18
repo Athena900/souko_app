@@ -186,6 +186,14 @@ p { line-height: 1.75; }
 .table-scroll .line-table { min-width: 650px; }
 .table-scroll .line-table td:last-child, .table-scroll .line-table th:last-child { text-align: left; white-space: normal; }
 
+/* Shipment management */
+.shipment-list-panel { padding: 20px 22px; }
+.shipment-list-panel h1 { margin: 5px 0 7px; font-size: clamp(1.35rem, 2vw, 1.7rem); letter-spacing: -.01em; }
+.shipment-list-panel .lede { margin: 0; font-size: .92rem; }
+.shipment-list-panel > .actions { align-items: end; margin-top: 15px; }
+.shipment-search-field { width: min(260px, 100%); }
+.shipment-list-footer { padding-top: 3px; }
+
 .demo-banner {
   display: flex;
   align-items: center;
@@ -425,6 +433,10 @@ p { line-height: 1.75; }
   .workspace-actions { grid-template-columns: 1fr; }
   .workspace-actions .import-primary-action { grid-column: auto; }
   .workspace-actions .outline-button { width: 100%; }
+  .shipment-list-panel { padding: 17px 14px; }
+  .shipment-list-panel > .actions { align-items: stretch; }
+  .shipment-search-field { width: 100%; }
+  .shipment-list-panel > .actions .button { width: 100%; }
   .billing-meta-grid { gap: 9px 12px; }
   .billing-summary-grid { grid-template-columns: 1fr; }
   .billing-summary-grid > div { border-radius: 8px !important; }
