@@ -25,19 +25,19 @@ export async function middleware(request: NextRequest) {
   });
 
   // Middlewareは画面遷移の補助だけ。APIの実権限判定はrequireMembershipで行う。
-  let claims: unknown = null;
+  let hasAuthenticatedUser = false;
   try {
     const { data } = await supabase.auth.getClaims();
-    // getClaims() は未ログインでも空の data オブジェクトを返す。
-    // data 自体ではなく claims の有無で認証済みかを判定する。
-    claims = data?.claims ?? null;
+    // getClaims() は未ログインでも空の data / claims オブジェクトを返す場合がある。
+    // 利用者ID（sub）があるときだけ認証済みとして扱う。
+    hasAuthenticatedUser = typeof data?.claims?.sub === "string" && data.claims.sub.length > 0;
   } catch {
     // 試用版では認証基盤に到達できない場合も、未ログインとして入口へ戻す。
   }
   const isLoginPage = request.nextUrl.pathname === "/login";
   const isPasswordSetupPage = request.nextUrl.pathname === "/set-password";
   const isApiRequest = request.nextUrl.pathname.startsWith("/api/");
-  if (isTrialEnvironment() && !isApiRequest && !isLoginPage && !isPasswordSetupPage && !claims) {
+  if (isTrialEnvironment() && !isApiRequest && !isLoginPage && !isPasswordSetupPage && !hasAuthenticatedUser) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = "";
