@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { getSupabaseBrowserClient } from "@/src/lib/supabase/browser";
+import { useSupabaseBrowserClient } from "@/src/features/auth/supabase-browser-provider";
 
 export function SetPasswordForm() {
+  const supabase = useSupabaseBrowserClient();
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [ready, setReady] = useState(false);
@@ -14,7 +15,7 @@ export function SetPasswordForm() {
   useEffect(() => {
     let active = true;
     Promise.resolve().then(async () => {
-      const supabase = await getSupabaseBrowserClient();
+      if (!supabase) throw new Error("Supabaseの接続設定を読み込めませんでした");
       const { data: { session } } = await supabase.auth.getSession();
       if (!active) return;
       if (!session) setError("招待リンクの有効期限が切れているか、すでに使用されています。管理者へ再招待を依頼してください。");
@@ -28,7 +29,7 @@ export function SetPasswordForm() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [supabase]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,7 +45,7 @@ export function SetPasswordForm() {
     setBusy(true);
     setError("");
     try {
-      const supabase = await getSupabaseBrowserClient();
+      if (!supabase) throw new Error("Supabaseの接続設定を読み込めませんでした");
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
       window.location.replace("/");

@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SupabaseBrowserProvider } from "@/src/features/auth/supabase-browser-provider";
+import { getSupabasePublicEnv } from "@/src/lib/env";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "CSロジネット 倉庫業務",
@@ -7,9 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  let supabaseBrowserConfig = null;
+  try {
+    supabaseBrowserConfig = getSupabasePublicEnv();
+  } catch {
+    // 共有メモリデモなど、Supabaseを使わない環境ではnullのまま描画する。
+  }
+
   return (
     <html lang="ja">
-      <body>{children}</body>
+      <body><SupabaseBrowserProvider config={supabaseBrowserConfig}>{children}</SupabaseBrowserProvider></body>
     </html>
   );
 }

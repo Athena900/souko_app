@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { getSupabaseBrowserClient } from "@/src/lib/supabase/browser";
+import { useSupabaseBrowserClient } from "@/src/features/auth/supabase-browser-provider";
 
 export function LoginForm() {
+  const supabase = useSupabaseBrowserClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,7 +17,7 @@ export function LoginForm() {
     setError("");
 
     try {
-      const supabase = await getSupabaseBrowserClient();
+      if (!supabase) throw new Error("Supabaseの接続設定を読み込めませんでした");
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) throw signInError;
       const requestedPath = typeof window === "undefined" ? "/" : new URLSearchParams(window.location.search).get("next") ?? "/";
