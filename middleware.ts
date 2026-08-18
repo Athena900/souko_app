@@ -37,7 +37,10 @@ export async function middleware(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname === "/login";
   const isPasswordSetupPage = request.nextUrl.pathname === "/set-password";
   const isApiRequest = request.nextUrl.pathname.startsWith("/api/");
-  if (isTrialEnvironment() && !isApiRequest && !isLoginPage && !isPasswordSetupPage && !hasAuthenticatedUser) {
+  // Supabase SSRは認証Cookieをチャンク化することがあるため、末尾の .0 等も許可する。
+  // Cookieがない外部アクセスは、claims応答の内容にかかわらずログインへ送る。
+  const hasSupabaseAuthCookie = request.cookies.getAll().some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name));
+  if (isTrialEnvironment() && !isApiRequest && !isLoginPage && !isPasswordSetupPage && (!hasSupabaseAuthCookie || !hasAuthenticatedUser)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = "";
