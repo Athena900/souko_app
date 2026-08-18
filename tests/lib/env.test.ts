@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { getStorageMode, isDemoMode, usesDemoMemoryStorage, usesSupabaseStorage } from "@/src/lib/env";
+import { getTrialStatus, isTrialMode, trialWriteDisabledMessage } from "@/src/lib/trial";
 
 const originalDemoMode = process.env.DEMO_MODE;
 const originalAppEnv = process.env.APP_ENV;
 const originalVercelEnv = process.env.VERCEL_ENV;
 const originalNodeEnv = process.env.NODE_ENV;
 const originalDemoStorage = process.env.DEMO_STORAGE;
+const originalTrialEndAt = process.env.TRIAL_END_AT;
 const env = process.env as Record<string, string | undefined>;
 
 afterEach(() => {
@@ -19,6 +21,8 @@ afterEach(() => {
   else env.NODE_ENV = originalNodeEnv;
   if (originalDemoStorage === undefined) delete env.DEMO_STORAGE;
   else env.DEMO_STORAGE = originalDemoStorage;
+  if (originalTrialEndAt === undefined) delete env.TRIAL_END_AT;
+  else env.TRIAL_END_AT = originalTrialEndAt;
 });
 
 describe("isDemoMode", () => {
@@ -38,6 +42,16 @@ describe("isDemoMode", () => {
     delete env.VERCEL_ENV;
 
     expect(isDemoMode()).toBe(true);
+  });
+
+  it("treats the explicitly named trial environment as demo display mode", () => {
+    env.APP_ENV = "trial";
+    env.DEMO_MODE = "true";
+    env.NODE_ENV = "production";
+    delete env.VERCEL_ENV;
+
+    expect(isDemoMode()).toBe(true);
+    expect(isTrialMode()).toBe(true);
   });
 
   it("never enables demo mode for an explicitly named production environment", () => {
@@ -79,6 +93,26 @@ describe("isDemoMode", () => {
     env.VERCEL_ENV = "preview";
 
     expect(isDemoMode()).toBe(false);
+  });
+});
+
+describe("trial status", () => {
+  it("allows writes before the configured trial end", () => {
+    env.APP_ENV = "trial";
+    env.TRIAL_END_AT = "2026-08-20T00:00:00.000Z";
+
+    expect(getTrialStatus(new Date("2026-08-19T00:00:00.000Z"))).toMatchObject({ kind: "active", writeAllowed: true });
+  });
+
+  it("fails closed when the trial end is missing or expired", () => {
+    env.APP_ENV = "trial";
+    delete env.TRIAL_END_AT;
+    expect(getTrialStatus(new Date("2026-08-19T00:00:00.000Z"))).toMatchObject({ kind: "misconfigured", writeAllowed: false });
+
+    env.TRIAL_END_AT = "2026-08-18T00:00:00.000Z";
+    const status = getTrialStatus(new Date("2026-08-19T00:00:00.000Z"));
+    expect(status).toMatchObject({ kind: "expired", writeAllowed: false });
+    expect(trialWriteDisabledMessage(status)).toContain("終了");
   });
 });
 

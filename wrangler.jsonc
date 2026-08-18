@@ -19,6 +19,14 @@
         "DEMO_STORAGE": "memory"
       }
     },
+    "trial": {
+      "name": "cslogi-warehouse-trial",
+      "vars": {
+        "APP_ENV": "trial",
+        "DEMO_MODE": "true",
+        "DEMO_STORAGE": "supabase"
+      }
+    },
     "production": {
       "name": "cslogi-warehouse",
       "vars": {

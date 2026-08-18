@@ -21,6 +21,7 @@ import {
   UnauthorizedError,
 } from "@/src/server/repositories/field-work-repository";
 import { fieldWorkInputSchema } from "@/src/domain/validation";
+import { assertTrialWriteAllowed, TrialWriteDisabledError } from "@/src/server/trial/trial-write-guard";
 
 const MAX_LIST_LIMIT = 100;
 
@@ -82,6 +83,12 @@ export async function POST(request: Request) {
     if (error instanceof RoutePayloadTooLargeError) return NextResponse.json({ error: error.message }, { status: 413 });
     if (error instanceof RouteForbiddenError) return NextResponse.json({ error: error.message }, { status: 403 });
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 403 });
+  }
+  try {
+    assertTrialWriteAllowed();
+  } catch (error) {
+    if (error instanceof TrialWriteDisabledError) return NextResponse.json({ error: error.message }, { status: 423 });
+    return NextResponse.json({ error: "試用期間を確認できませんでした" }, { status: 503 });
   }
   const useMemoryStorage = usesDemoMemoryStorage();
   if (usesSupabaseStorage() && !hasSupabasePublicEnv()) {

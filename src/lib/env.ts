@@ -38,7 +38,7 @@ export function isDemoMode(): boolean {
   if (process.env.VERCEL_ENV === "production") return false;
   // Cloudflare Workersなど、NODE_ENVがproductionでも共有用のデモ環境を
   // 明示できるようにする。デプロイ先に依存しない環境判定を優先する。
-  if (process.env.APP_ENV === "demo" || process.env.APP_ENV === "staging") return true;
+  if (process.env.APP_ENV === "demo" || process.env.APP_ENV === "staging" || process.env.APP_ENV === "trial") return true;
   if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production") return true;
   return process.env.NODE_ENV !== "production" && process.env.DEMO_MODE === "true";
 }

@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function isTrialEnvironment(): boolean {
+  return process.env.APP_ENV === "trial";
+}
+
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -20,7 +24,25 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  await supabase.auth.getUser();
+  // Middlewareは画面遷移の補助だけ。APIの実権限判定はrequireMembershipで行う。
+  let claims: unknown = null;
+  try {
+    const { data } = await supabase.auth.getClaims();
+    claims = data;
+  } catch {
+    // 試用版では認証基盤に到達できない場合も、未ログインとして入口へ戻す。
+  }
+  const isLoginPage = request.nextUrl.pathname === "/login";
+  const isPasswordSetupPage = request.nextUrl.pathname === "/set-password";
+  const isApiRequest = request.nextUrl.pathname.startsWith("/api/");
+  if (isTrialEnvironment() && !isApiRequest && !isLoginPage && !isPasswordSetupPage && !claims) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
+    loginUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
+    return NextResponse.redirect(loginUrl);
+  }
+
   return response;
 }
 

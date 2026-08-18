@@ -5,6 +5,7 @@ import { POST as importPreview } from "@/app/api/import-preview/route";
 import { GET as shipments } from "@/app/api/shipments/route";
 import { POST as billingCandidates } from "@/app/api/billing-candidates/route";
 import { POST as reviewBillingCandidate } from "@/app/api/billing-candidates/review/route";
+import { POST as registerExcel } from "@/app/api/excel-import-register/route";
 
 const record = {
   clientId: "client-a",
@@ -30,6 +31,7 @@ describe("API security boundaries", () => {
   const originalDemoMode = process.env.DEMO_MODE;
   const originalAppEnv = process.env.APP_ENV;
   const originalDemoStorage = process.env.DEMO_STORAGE;
+  const originalTrialEndAt = process.env.TRIAL_END_AT;
 
   beforeEach(() => {
     delete process.env.DEMO_MODE;
@@ -44,6 +46,8 @@ describe("API security boundaries", () => {
     else process.env.APP_ENV = originalAppEnv;
     if (originalDemoStorage === undefined) delete process.env.DEMO_STORAGE;
     else process.env.DEMO_STORAGE = originalDemoStorage;
+    if (originalTrialEndAt === undefined) delete process.env.TRIAL_END_AT;
+    else process.env.TRIAL_END_AT = originalTrialEndAt;
   });
 
   it("does not calculate a billing preview from client-supplied rules in production mode", async () => {
@@ -128,6 +132,26 @@ describe("API security boundaries", () => {
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "Supabaseの設定が必要です" });
+  });
+
+  it("blocks every persistent write API after the trial period", async () => {
+    process.env.APP_ENV = "trial";
+    process.env.DEMO_MODE = "true";
+    process.env.DEMO_STORAGE = "supabase";
+    process.env.TRIAL_END_AT = "2026-08-01T00:00:00.000Z";
+
+    const requests = [
+      fieldRecords(new Request("http://localhost/api/field-records", { method: "POST", headers: sameOriginHeaders(), body: JSON.stringify(record) })),
+      billingCandidates(new Request("http://localhost/api/billing-candidates", { method: "POST", headers: sameOriginHeaders(), body: JSON.stringify({}) })),
+      reviewBillingCandidate(new Request("http://localhost/api/billing-candidates/review", { method: "POST", headers: sameOriginHeaders(), body: JSON.stringify({}) })),
+      registerExcel(new Request("http://localhost/api/excel-import-register", { method: "POST", headers: sameOriginHeaders(), body: "" })),
+    ];
+
+    const responses = await Promise.all(requests);
+    await Promise.all(responses.map(async (response) => {
+      expect(response.status).toBe(423);
+      await expect(response.json()).resolves.toEqual({ error: "試用期間が終了したため、新しい入力は保存できません" });
+    }));
   });
 
   it("requires scope headers before parsing a production CSV", async () => {

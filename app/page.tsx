@@ -3,6 +3,8 @@ import { DemoEnvironmentBanner } from "@/src/features/demo/demo-environment-bann
 import { AppFrame } from "@/src/features/layout/app-shell";
 import { isDemoMode } from "@/src/lib/env";
 
+export const dynamic = "force-dynamic";
+
 const kpis = [
   { label: "出荷予定", value: "128", detail: "（8,450 個口）", tone: "teal", icon: "▣", href: "/shipments" },
   { label: "作業中", value: "45", detail: "（3,210 個口）", tone: "yellow", icon: "▰", href: "/field" },

@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/src/lib/supabase/browser";
 
 export function LoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,8 +19,9 @@ export function LoginForm() {
       const supabase = createSupabaseBrowserClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) throw signInError;
-      router.replace("/");
-      router.refresh();
+      const requestedPath = typeof window === "undefined" ? "/" : new URLSearchParams(window.location.search).get("next") ?? "/";
+      const nextPath = requestedPath.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : "/";
+      window.location.replace(nextPath);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "ログインできませんでした");
     } finally {
