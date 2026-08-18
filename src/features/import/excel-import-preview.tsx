@@ -25,7 +25,7 @@ interface ImportScope {
   siteId: string;
 }
 
-export function ExcelImportPreview({ demoMode = false, scope }: { demoMode?: boolean; scope: ImportScope | null }) {
+export function ExcelImportPreview({ demoMode = false, scope, writeDisabled = false, writeDisabledReason }: { demoMode?: boolean; scope: ImportScope | null; writeDisabled?: boolean; writeDisabledReason?: string | null }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [registration, setRegistration] = useState<RegistrationResponse | null>(null);
@@ -153,6 +153,7 @@ export function ExcelImportPreview({ demoMode = false, scope }: { demoMode?: boo
           </label>
 
           {demoMode && <p className="notice import-notice">デモ用のExcelを選び、内容を確認してから登録してください。</p>}
+          {writeDisabled && <p className="notice import-notice">{writeDisabledReason}</p>}
           {file && <p className="selected-file">選択中：<strong>{file.name}</strong></p>}
           {message && <div className={`status ${message.kind === "error" ? "error" : ""}`} role="status">{message.text}</div>}
 
@@ -213,9 +214,9 @@ export function ExcelImportPreview({ demoMode = false, scope }: { demoMode?: boo
               type="button"
               aria-label={preview ? "この内容で登録する" : "内容を確認する"}
               onClick={preview ? registerFile : previewFile}
-              disabled={busy || !file || Boolean(registration) || Boolean(preview?.exceptions.length)}
+              disabled={busy || !file || Boolean(registration) || Boolean(preview?.exceptions.length) || Boolean(preview && writeDisabled)}
             >
-              {busy ? (preview ? "登録中…" : "確認中…") : registration ? "登録済み" : preview ? "インポート実行  ›" : "内容を確認する  ›"}
+              {busy ? (preview ? "登録中…" : "確認中…") : registration ? "登録済み" : preview ? writeDisabled ? "登録できません" : "インポート実行  ›" : "内容を確認する  ›"}
             </button>
           </div>
           {registration && <div className="registration-complete"><span aria-hidden="true">✓</span>登録番号：{registration.importRunId} / 出荷{registration.shipmentCount}件・商品明細{registration.detailCount}行<Link href="/field">登録した出荷で現場入力へ</Link></div>}

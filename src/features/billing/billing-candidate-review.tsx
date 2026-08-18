@@ -44,7 +44,7 @@ function statusLabel(status: BillingCandidateReviewStatus): string {
   }
 }
 
-export function BillingCandidateReview({ scope }: { scope: BillingScope | null }) {
+export function BillingCandidateReview({ scope, writeDisabled = false, writeDisabledReason }: { scope: BillingScope | null; writeDisabled?: boolean; writeDisabledReason?: string | null }) {
   const [records, setRecords] = useState<FieldWorkSummary[]>([]);
   const [loadState, setLoadState] = useState<{ scopeKey: string; error: string | null }>({ scopeKey: "", error: null });
   const [selectedRecordId, setSelectedRecordId] = useState("");
@@ -168,7 +168,8 @@ export function BillingCandidateReview({ scope }: { scope: BillingScope | null }
           </select>
         </div>
         {loading ? <p className="muted">現場記録を読み込み中…</p> : loadError ? <p className="notice">{loadError}</p> : visibleRecords.length === 0 ? <p className="notice">現場記録がありません。先に現場入力を保存してください。</p> : selectedRecord ? <p className="muted">選択中：{selectedRecord.shipmentNo} / {selectedRecord.workDate}</p> : null}
-        <button className="button" type="button" onClick={calculateCandidate} disabled={busy || loading || !selectedRecordId}>{candidate?.status === "approved" || candidate?.status === "rejected" ? "請求候補を再計算" : "請求候補を計算"}</button>
+        <button className="button" type="button" onClick={calculateCandidate} disabled={busy || loading || !selectedRecordId || writeDisabled}>{candidate?.status === "approved" || candidate?.status === "rejected" ? "請求候補を再計算" : writeDisabled ? "計算を保存できません" : "請求候補を計算"}</button>
+        {writeDisabled && <div className="status warning" role="status">{writeDisabledReason}</div>}
         {message && <div className={`status ${message.kind === "error" ? "error" : message.kind === "warning" ? "warning" : ""}`} role="status">{message.text}</div>}
       </section>
 
@@ -189,7 +190,7 @@ export function BillingCandidateReview({ scope }: { scope: BillingScope | null }
           {candidate.calculation.warnings.length > 0 && <div className="status warning"><strong>確認が必要</strong>{candidate.calculation.warnings.map((warning) => <div key={warning}>{warning}</div>)}</div>}
           <div className="billing-detail-heading"><strong>請求明細</strong><span>（上位10件を表示）</span></div>
           <div className="table-scroll"><table className="line-table billing-detail-table"><thead><tr><th>No.</th><th>出荷番号</th><th>日付</th><th>品名</th><th>数量</th><th>単価</th><th>金額（税抜）</th></tr></thead><tbody>{candidate.calculation.lines.slice(0, 10).map((line, index) => <tr key={`${index}-${line.workCode}-${line.priceRuleId}`}><td>{index + 1}</td><td>{candidate.shipmentNo}</td><td>{candidate.workDate.slice(5).replace("-", "/")}</td><td>{line.description}</td><td>{line.quantity}</td><td>{yen(line.unitPriceYen)}</td><td>{yen(line.totalYen)}</td></tr>)}</tbody></table></div>
-          {candidate.persisted ? <><div className="field" style={{ marginTop: 16 }}><label htmlFor="reviewNote">確認メモ（警告がある場合は必須）</label><textarea id="reviewNote" value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="例：数量を作業表と確認済み" /></div><div className="actions"><button className="button" type="button" onClick={() => reviewCandidate("approved")} disabled={busy || !canReview}>確認済みにする</button><button className="button secondary" type="button" onClick={() => reviewCandidate("rejected")} disabled={busy || !canReview}>差し戻す</button></div></> : <p className="notice">この候補は保存されていないため、確認結果を保存できません。</p>}
+          {candidate.persisted ? <><div className="field" style={{ marginTop: 16 }}><label htmlFor="reviewNote">確認メモ（警告がある場合は必須）</label><textarea id="reviewNote" value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="例：数量を作業表と確認済み" /></div><div className="actions"><button className="button" type="button" onClick={() => reviewCandidate("approved")} disabled={busy || !canReview || writeDisabled}>確認済みにする</button><button className="button secondary" type="button" onClick={() => reviewCandidate("rejected")} disabled={busy || !canReview || writeDisabled}>差し戻す</button></div></> : <p className="notice">この候補は保存されていないため、確認結果を保存できません。</p>}
         </>}
       </section>
     </div>
